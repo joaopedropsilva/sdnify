@@ -8,10 +8,6 @@ from information import RoutineResults, Display, Manual
 
 class ActionDirector:
     @staticmethod
-    def __get_main_process() -> dict:
-        pass
-
-    @staticmethod
     def __read_args() -> dict:
         pass
 
@@ -84,7 +80,7 @@ class ServicesController:
         self.__flow_manager = FlowManager()
         self.__monitor_service = MonitorService()
 
-    def start(self) -> RoutineResults:
+    def start(self) -> Response:
         """
             Inicializa o editor de topologia e gera a topologia desejada,
             se houver sucesso na geração inicializa o serviço de monitoramento.
@@ -93,19 +89,22 @@ class ServicesController:
         if res.status:
             self.__monitor_service.configure()
 
-    def destroy(self) -> RoutineResults:
+    def destroy(self) -> Response:
         """
             Executa a rotina de desalocação de recursos da rede.
         """
         self.__topo_manager.destroy()
 
-    def get_statistics(self) -> RoutineResults:
+    def get_statistics(self) -> Response:
         """
             Executa a rotina de recuperação de informações da rede.
         """
         pass
 
-    def manage_policy(self, policy_data: dict) -> RoutineResults:
+    def manage_policy(self) -> Response:
+        pass
+
+    def capture_alerts(self, policy_data: dict) -> Response:
         pass
 
 class TopoManager:
