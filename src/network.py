@@ -1,3 +1,4 @@
+from flask import Flask, Response
 from mininet.node import RemoteController
 from mininet.topo import Topo
 from typing import List
@@ -73,6 +74,9 @@ class ActionDirector:
         """
         pass
 
+class Api:
+    app = Flask(__name__)
+
 class ServicesController:
     def __init__(self):
         self.__config = None # read_config
@@ -80,30 +84,33 @@ class ServicesController:
         self.__flow_manager = FlowManager()
         self.__monitor_service = MonitorService()
 
-    def start(self) -> Response:
+    @Api.app.route("/start")
+    def start(self) -> str:
         """
             Inicializa o editor de topologia e gera a topologia desejada,
             se houver sucesso na geração inicializa o serviço de monitoramento.
         """
-        res = self.__topo_manager.generate()
-        if res.status:
-            self.__monitor_service.configure()
+        return "ok"
 
+    @Api.app.route("/destroy")
     def destroy(self) -> Response:
         """
             Executa a rotina de desalocação de recursos da rede.
         """
         self.__topo_manager.destroy()
 
+    @Api.app.route("/get_statistics")
     def get_statistics(self) -> Response:
         """
             Executa a rotina de recuperação de informações da rede.
         """
         pass
 
+    @Api.app.route("/manage_policy")
     def manage_policy(self) -> Response:
         pass
 
+    @Api.app.route("/capture_alerts")
     def capture_alerts(self, policy_data: dict) -> Response:
         pass
 
