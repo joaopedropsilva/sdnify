@@ -7,20 +7,27 @@ from qos import FlowManager
 from monitor import MonitorService
 from information import RoutineResults, Display, Manual
 
+import requests
+
 class ActionDirector:
     @staticmethod
     def __read_args() -> dict:
         pass
+
+    BASE_URL = "http://127.0.0.1:5000"  # URL do Flask Server onde a API está rodando
 
     @staticmethod
     def create_network() -> None:
         """
             Inicializa um controlador de serviços num novo processo
         """
-        sc = ServicesController()
-        # Abre um processo e chama o método start
-        sc.start()
-        # Informa sobre o status da operação
+
+        response = requests.get(f"{ActionDirector.BASE_URL}/start")
+
+        if response.status_code == 200:
+            print("Rede criada com sucesso e serviço de monitoramento inicializado.")
+        else:
+            print(f"Erro na criação da rede: Código HTTP {response.status_code} - {response.text}")
 
     @staticmethod
     def destroy_network() -> None:
@@ -28,7 +35,13 @@ class ActionDirector:
             Executa as rotinas para a destruição da rede criada.
         """
         ActionDirector.__get_service_controller_process()
-        sc.destroy()
+
+        response = requests.get(f"{ActionDirector.BASE_URL}/destroy")
+
+        if response.status_code == 200:
+            print("Rede destruída com sucesso e recursos desalocados.")
+        else:
+            print(f"Erro na destruição da rede: Código HTTP {response.status_code} - {response.text}")
 
     @staticmethod
     def create_policy() -> None:
@@ -37,7 +50,14 @@ class ActionDirector:
             e executa as rotinas de criação de uma nova política.
         """
         ActionDirector.__get_service_controller_process()
-        pass
+
+        response = requests.get(f"{ActionDirector.BASE_URL}/manage_policy")
+
+        if response.status_code == 200:
+            print("Política criada com sucesso.")
+        else:
+            print(f"Erro na criação da política: Código HTTP {response.status_code} - {response.text}")
+
 
     @staticmethod
     def update_policy() -> None:
@@ -46,7 +66,14 @@ class ActionDirector:
             e executa as rotinas de atualização de políticas.
         """
         ActionDirector.__get_service_controller_process()
-        pass
+        
+        response = requests.get(f"{ActionDirector.BASE_URL}/manage_policy")
+
+        if response.status_code == 200:
+            print("Política atualizada com sucesso.")
+        else:
+            print(f"Erro na atualização da política: Código HTTP {response.status_code} - {response.text}")
+
 
     @staticmethod
     def remove_policy() -> None:
@@ -55,7 +82,13 @@ class ActionDirector:
             e executa as rotinas de remoção de políticas.
         """
         ActionDirector.__get_service_controller_process()
-        pass
+        
+        response = requests.get(f"{ActionDirector.BASE_URL}/manage_policy")
+
+        if response.status_code == 200:
+            print("Política removida com sucesso.")
+        else:
+            print(f"Erro na remoção da política: Código HTTP {response.status_code} - {response.text}")
 
     @staticmethod
     def show_network_state() -> None:
@@ -64,7 +97,12 @@ class ActionDirector:
             a rede instanciada, as políticas ativas e o monitoramento
         """
         ActionDirector.__get_service_controller_process()
-        pass
+        
+        response = requests.get(f"{ActionDirector.BASE_URL}/get_statistics")
+        if response.status_code == 200:
+            print("Informações da rede recuperadas com sucesso.")
+        else:
+            print(f"Erro na recuperação do estado da rede: Código HTTP {response.status_code} - {response.text}")
 
     @staticmethod
     def show_manual() -> None:
@@ -98,21 +136,24 @@ class ServicesController:
             Executa a rotina de desalocação de recursos da rede.
         """
         self.__topo_manager.destroy()
+        return "ok"
 
     @Api.app.route("/get_statistics")
     def get_statistics(self) -> Response:
         """
             Executa a rotina de recuperação de informações da rede.
         """
-        pass
+        return "ok"
 
     @Api.app.route("/manage_policy")
     def manage_policy(self) -> Response:
-        pass
+        
+        return "ok"
 
     @Api.app.route("/capture_alerts")
     def capture_alerts(self, policy_data: dict) -> Response:
-        pass
+        
+        return "ok"
 
 class TopoManager:
     def __init__(self):
