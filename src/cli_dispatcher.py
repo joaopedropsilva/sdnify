@@ -14,13 +14,13 @@ def cli_dispatcher():
     
     # Mapeia o argumento para o método correspondente
     action_map = {
-        "create_network": ActionDirector.create_network,
-        "destroy_network": ActionDirector.destroy_network,
-        "create_policy": ActionDirector.create_policy,
-        "update_policy": ActionDirector.update_policy,
-        "remove_policy": ActionDirector.remove_policy,
-        "show_network_state": ActionDirector.show_network_state,
-        "show_manual": ActionDirector.show_manual,
+        "create_network": ActionDirector.create_network, # caminho de um arquivo JSON
+        "destroy_network": ActionDirector.destroy_network, # sem parâmetro
+        "create_policy": ActionDirector.create_policy, # nome, protocolo, bandwidth
+        "update_policy": ActionDirector.update_policy, # nome, protocolo, bandwidth
+        "remove_policy": ActionDirector.remove_policy, # protocolo
+        "show_network_state": ActionDirector.show_network_state, # sem parâmetro
+        "show_manual": ActionDirector.show_manual, # sem parâmetro -> manual inteiro ou rules ou commands
     }
     
     # Executa o método correspondente
