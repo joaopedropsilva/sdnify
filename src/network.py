@@ -17,12 +17,14 @@ class ActionDirector:
     BASE_URL = "http://127.0.0.1:5000"  # URL do Flask Server onde a API está rodando
 
     @staticmethod
-    def create_network() -> None:
+    def create_network(file: str) -> None:
         """
             Inicializa um controlador de serviços num novo processo
         """
+        with open(file, 'r') as json_file:
+            config_data = json_file.read()
 
-        response = requests.get(f"{ActionDirector.BASE_URL}/start")
+        response = requests.post(f"{ActionDirector.BASE_URL}/start", data=config_data)
 
         if response.status_code == 200:
             print("Rede criada com sucesso e serviço de monitoramento inicializado.")
@@ -34,7 +36,6 @@ class ActionDirector:
         """
             Executa as rotinas para a destruição da rede criada.
         """
-        ActionDirector.__get_service_controller_process()
 
         response = requests.get(f"{ActionDirector.BASE_URL}/destroy")
 
@@ -44,14 +45,15 @@ class ActionDirector:
             print(f"Erro na destruição da rede: Código HTTP {response.status_code} - {response.text}")
 
     @staticmethod
-    def create_policy() -> None:
+    def create_policy(name: str, protocol: str, bandwidth: float) -> None:
         """
             Recebe as informações da política por parâmetros CLI
             e executa as rotinas de criação de uma nova política.
         """
-        ActionDirector.__get_service_controller_process()
 
-        response = requests.get(f"{ActionDirector.BASE_URL}/manage_policy")
+        policy_data = {"name": name, "protocol": protocol, "bandwidth": bandwidth}
+        response = requests.post(f"{ActionDirector.BASE_URL}/manage_policy", json=policy_data)
+
 
         if response.status_code == 200:
             print("Política criada com sucesso.")
@@ -60,14 +62,14 @@ class ActionDirector:
 
 
     @staticmethod
-    def update_policy() -> None:
+    def update_policy(name: str, protocol: str, bandwidth: float) -> None:
         """
             Recebe as informações da política por parâmetros CLI
             e executa as rotinas de atualização de políticas.
         """
-        ActionDirector.__get_service_controller_process()
         
-        response = requests.get(f"{ActionDirector.BASE_URL}/manage_policy")
+        policy_data = {"name": name, "protocol": protocol, "bandwidth": bandwidth}
+        response = requests.put(f"{ActionDirector.BASE_URL}/manage_policy", json=policy_data)
 
         if response.status_code == 200:
             print("Política atualizada com sucesso.")
@@ -76,14 +78,14 @@ class ActionDirector:
 
 
     @staticmethod
-    def remove_policy() -> None:
+    def remove_policy(protocol: str) -> None:
         """
             Recebe as informações da política por parâmetros CLI
             e executa as rotinas de remoção de políticas.
         """
-        ActionDirector.__get_service_controller_process()
         
-        response = requests.get(f"{ActionDirector.BASE_URL}/manage_policy")
+        policy_data = {"protocol": protocol}
+        response = requests.delete(f"{ActionDirector.BASE_URL}/manage_policy", json=policy_data)
 
         if response.status_code == 200:
             print("Política removida com sucesso.")
@@ -96,7 +98,6 @@ class ActionDirector:
             Executa rotinas de recuperação de informações sobre
             a rede instanciada, as políticas ativas e o monitoramento
         """
-        ActionDirector.__get_service_controller_process()
         
         response = requests.get(f"{ActionDirector.BASE_URL}/get_statistics")
         if response.status_code == 200:
