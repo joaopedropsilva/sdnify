@@ -1,60 +1,30 @@
 from enum import Enum
-import json
 
+from pathlib import Path
+
+import json
 import requests
 
 class Utils:
     @staticmethod
-    def read_file(source: str) -> dict:
-        if source.startswith("http://") or source.startswith("https://"):
-            return requests.get(source).json()
-        else:
-            with open(source, "r", encoding="utf-8") as file:
-                return json.load(file)
-    
-    @staticmethod
-    def validate_json_topology(data: dict) -> bool:
-        if "hosts" not in data or "switches" not in data:
-            raise InvalidTopologyError() 
-
-        if not isinstance(data["hosts"], list):
-            raise InvalidTopologyError()
-        if not all(isinstance(host,str) for host in data["hosts"]):
-            raise InvalidTopologyError()
-        pass        
-
-        if not isinstance(data["switches"], list):
-            raise InvalidTopologyError()
-        pass
+    def read_file(file_path: str) -> dict:
+        try:
+            file_path = Path(file_path).resolve()
         
-        for switch in data["switches"]:
-            if not isinstance(switch, dict):
-                raise InvalidTopologyError()
-            pass
-
-            if "id" not in switch or "links" not in switch:
-                raise InvalidTopologyError()
-            pass 
-
-            if not isinstance(switch["id"], str):
-                raise InvalidTopologyError()
-            pass
-
-            if not isinstance(switch["links"], list):
-                raise InvalidTopologyError()
-            pass
-
-            if not all(isinstance(link, str) for link in switch["links"]):
-                raise InvalidTopologyError()
-            pass
-
-        return True
-
-class InvalidTopologyError(Exception):
-    """
-    Exceção personalizada para erros de validação da topologia definida no arquivo JSON
-    """
-    pass
+            if not file_path.exists():
+                raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
+        
+            with open(file_path, "r", encoding="utf-8") as file:
+                data = json.load(file)
+                
+            return data
+        
+        except FileNotFoundError as e:
+            print(e)
+            return None
+        
+        finally:
+            print("Operação de leitura do arquivo concluída.")
 
 class RoutineResults():
     def __init__(self, status: bool = False, err_reason: str = "", payload = None):
