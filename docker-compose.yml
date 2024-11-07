@@ -4,9 +4,8 @@ services:
   mininet:
     build:
       context: .
-    image: iwaseyusuke/mininet:ubuntu-22.04
+      dockerfile: mininet.Dockerfile
     tty: true
-    network_mode: "bridge"
     privileged: true
     environment:
      - DISPLAY
@@ -23,8 +22,8 @@ services:
       - 6653:6653
       - 9302:9302
   gauge:
-    restart: always
     image: faucet/gauge:1.10.11
+    restart: always
     volumes:
       - /etc/faucet/:/etc/faucet/
       - /var/log/faucet/:/var/log/faucet/
@@ -32,9 +31,9 @@ services:
       - 6654:6653
       - 9303:9303
   prometheus:
-    restart: always
-    user: root
     image: prom/prometheus:v2.55.0
+    restart: always
+    privileged: true
     volumes:
       - /etc/faucet/:/etc/faucet/
       - /var/log/faucet/:/var/log/faucet/
@@ -46,9 +45,9 @@ services:
       - faucet
       - gauge
   grafana:
-    restart: always
-    user: root
     image: grafana/grafana:11.2.2
+    restart: always
+    privileged: true
     ports:
       - 3000:3000
     links:
