@@ -1,0 +1,55 @@
+---
+name: sdn-qos-controller
+services:
+  mininet:
+    build:
+      context: .
+      dockerfile: mininet.Dockerfile
+    tty: true
+    privileged: true
+    environment:
+     - DISPLAY
+    volumes:
+     - /tmp/.X11-unix:/tmp/.X11-unix
+     - /lib/modules:/lib/modules
+  faucet:
+    restart: always
+    image: faucet/faucet:1.10.11
+    volumes:
+      - /etc/faucet/:/etc/faucet/
+      - /var/log/faucet/:/var/log/faucet/
+    ports:
+      - 6653:6653
+      - 9302:9302
+  gauge:
+    image: faucet/gauge:1.10.11
+    restart: always
+    volumes:
+      - /etc/faucet/:/etc/faucet/
+      - /var/log/faucet/:/var/log/faucet/
+    ports:
+      - 6654:6653
+      - 9303:9303
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    restart: always
+    privileged: true
+    volumes:
+      - /etc/faucet/:/etc/faucet/
+      - /var/log/faucet/:/var/log/faucet/
+      - ./etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./etc/prometheus/faucet.rules.yml:/etc/prometheus/faucet.rules.yml
+    ports:
+      - 9090:9090
+    links:
+      - faucet
+      - gauge
+  grafana:
+    image: grafana/grafana:11.2.2
+    restart: always
+    privileged: true
+    ports:
+      - 3000:3000
+    links:
+      - prometheus
+
