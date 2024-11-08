@@ -152,12 +152,22 @@ class TopoManager:
         pass
 
 class Topology(Topo):
-    def build(self) -> None:
-        pass
+    def build(self, topology: dict) -> None:
+        for host in topology["hosts"]:
+            self.addHost(host)
+
+        for switch in topology["switches"]:
+            id = switch["id"]
+            links = switch["links"]
+
+            self.addSwitch(id)
+
+            for host in links:
+                self.addLink(host, id)
 
 class Controller(RemoteController):
     CONTROLLER_NAME = "c0"
-    CONTROLLER_ADDR = "127.0.0.1"
+    CONTROLLER_ADDR = "faucet" # ver se o DNS reconhece ou preciso do IP do container
     OPF_PORT = 6653
 
     @staticmethod
