@@ -152,11 +152,14 @@ class TopoManager:
         pass
 
 class Topology(Topo):
-    def build(self, topology: dict) -> None:
-        for host in topology["hosts"]:
+    def __init__(self, topology: dict):
+        self.topology = topology
+
+    def build(self) -> None:
+        for host in self.topology["hosts"]:
             self.addHost(host)
 
-        for switch in topology["switches"]:
+        for switch in self.topology["switches"]:
             id = switch["id"]
             links = switch["links"]
 
