@@ -10,6 +10,7 @@ services:
     environment:
      - DISPLAY
     volumes:
+     - ./src/:/root/app/src/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
   faucet:
