@@ -72,7 +72,7 @@ class Manual:
         pass
 
 class PolicyTypes(Enum):
-    VOIP = 1,
-    HTTP = 2,
-    FTP = 3
+    VOIP = "voip",
+    HTTP = "http",
+    FTP = "ftp"
 
