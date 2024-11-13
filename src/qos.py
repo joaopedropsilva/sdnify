@@ -53,7 +53,28 @@ class FlowManager:
         pass
 
     def create(self, policy: Policy) -> RoutineResults:
-        pass
+        try:
+            validation = self.__validate(policy)
+
+            if not validation.status == False:
+                return validation
+            
+            self.policies.append(policy)
+
+            update = self.__update_tables()
+            
+            if update.status == False:
+                self.policies.remove(policy)
+                return update
+            
+            return RoutineResults(status=True, payload="Política criada com sucesso.")
+        
+        except Exception as e:
+            print(f"Erro ao criar política: {e}")
+            return RoutineResults(status=False, err_reason=str(e))
+        
+        finally:
+            print("Operação de criação de política finalizada.")
 
     def update(self, policy: Policy) -> RoutineResults:
         pass
