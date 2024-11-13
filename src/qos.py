@@ -31,7 +31,27 @@ class FlowManager:
         pass
 
     def update(self, policy: Policy) -> RoutineResults:
-        pass
+        try:
+            validation = self.__validate(policy)
+
+            if validation.status == False:
+                return RoutineResults(status=False, err_reason="Falha na validação da política: " + validation.err_reason)
+
+            existing_policy = next((p for p in self.policies if p.name == policy.name), None)
+
+            if not existing_policy:
+                return RoutineResults(status=False, err_reason="Política não encontrada.")
+            
+            existing_policy.traffic_type = policy.traffic_type
+            existing_policy.bandwidth_reserved = policy.bandwidth_reserved
+
+            return RoutineResults(status=True, payload="Política atualizada com sucesso.")
+        
+        except Exception as e:
+            return RoutineResults(status=False, err_reason="Falha ao atualizar política: str{e}")
+        
+        finally:
+            print("Operação de atualização de políticas finalizado.")
 
     def remove(self, policy: Policy) -> RoutineResults:
         pass
