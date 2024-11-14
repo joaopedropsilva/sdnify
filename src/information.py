@@ -3,28 +3,23 @@ from enum import Enum
 from pathlib import Path
 
 import json
-import requests
 
 class Utils:
     @staticmethod
-    def read_file(file_path: str) -> dict:
+    def read_json_from(filepath: str) -> dict:
         try:
-            file_path = Path(file_path).resolve()
+            path = Path(filepath)
         
-            if not file_path.exists():
-                raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
+            if not path.exists():
+                raise FileNotFoundError(f"Arquivo não encontrado: {path}")
         
-            with open(file_path, "r", encoding="utf-8") as file:
+            with open(path, "r", encoding="utf-8") as file:
                 data = json.load(file)
                 
             return data
         
-        except FileNotFoundError as e:
-            print(e)
-            return None
-        
-        finally:
-            print("Operação de leitura do arquivo concluída.")
+        except FileNotFoundError:
+            return {}
 
 class RoutineResults():
     def __init__(self, status: bool = False, err_reason: str = "", payload = None):

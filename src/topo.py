@@ -1,3 +1,40 @@
+from mininet.node import RemoteController
+from mininet.topo import Topo
+
+class Topology(Topo):
+    def __init__(self, topology: dict):
+        self.topology = topology
+
+    def build(self) -> None:
+        for host in self.topology["hosts"]:
+            self.addHost(host)
+
+        for switch in self.topology["switches"]:
+            id = switch["id"]
+            links = switch["links"]
+
+            self.addSwitch(id)
+
+            for host in links:
+                self.addLink(host, id)
+
+class Controller(RemoteController):
+    CONTROLLER_NAME = "c0"
+    CONTROLLER_ADDR = "faucet" # ver se o DNS reconhece ou preciso do IP do container
+    OPF_PORT = 6653
+
+    @staticmethod
+    def create_controller(
+        name: str = CONTROLLER_NAME,
+        addr: str = CONTROLLER_ADDR,
+        port: int = OPF_PORT
+    ) -> RemoteController:
+        return RemoteController(
+            name,
+            ip=addr,
+            port=port
+        )
+
 class Validator:
     @staticmethod
     def validate_json(data: dict) -> bool:
@@ -36,3 +73,4 @@ class Validator:
 class InvalidTopologyError(Exception):
     def __init__(self, message = "Topologia de rede inválida."):
         super().__init__(message)
+
