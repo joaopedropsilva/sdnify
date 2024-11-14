@@ -1,4 +1,4 @@
-from flask import Flask, Response
+from flask import Flask, Response, jsonify, request
 from mininet.net import Mininet
 import requests
 
@@ -108,10 +108,34 @@ class ServicesController:
     def get_statistics(self) -> Response:
         return "ok"
 
-    @Api.app.route("/manage_policy")
+    @Api.app.route("/manage_policy", methods=["POST", "PUT", "DELETE"])
     def manage_policy(self) -> Response:
-        return "ok"
+        try:
+            policy_data = request.json
+            method = request.method
+            
+            if method == "POST":
+                result = self.__flow_manager.create(policy_data)
+            elif method == "PUT":
+                result = self.__flow_manager.update(policy_data)
+            elif method == "DELETE":
+                result = self.__flow_manager.remove(policy_data)
+            
+            else:
+                return jsonify({"error": "Método HTTP Inválido."}), 405
+        
+            if result.status:
+                return jsonify({"status": "success", "payload": result.payload}), 200
+            
+            if result.status:
+                return jsonify({"status": "failure", "payload": result.err_reason}), 400
 
+        except KeyError as e:
+            return jsonify({"error": "Dados Inválidos ou Incompletos.", "details": str(e)}), 500
+
+        except Exception as e:
+            return jsonify({"error": "Erro no Servidor.", "details": str(e)}), 500
+        
     @Api.app.route("/capture_alerts")
     def capture_alerts(self, policy_data: dict) -> Response:
         return "ok"
