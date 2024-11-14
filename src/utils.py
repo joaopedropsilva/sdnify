@@ -1,8 +1,9 @@
-from enum import Enum
+from flask import Flask
 from pathlib import Path
-import json
+from json import load
 
-class Utils:
+
+class File:
     @staticmethod
     def read_json_from(filepath: str) -> dict:
         try:
@@ -12,12 +13,15 @@ class Utils:
                 raise FileNotFoundError(f"Arquivo não encontrado: {path}")
         
             with open(path, "r", encoding="utf-8") as file:
-                data = json.load(file)
+                data = load(file)
                 
             return data
         
         except FileNotFoundError:
             return {}
+
+class Api:
+    app = Flask(__name__)
 
 class Manual:
     @staticmethod
@@ -40,9 +44,4 @@ class Manual:
             Retorna os comandos definidos no manual do controlador
         """
         pass
-
-class PolicyTypes(Enum):
-    VOIP = 1,
-    HTTP = 2,
-    FTP = 3
 
