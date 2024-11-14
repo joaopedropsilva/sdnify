@@ -1,7 +1,5 @@
 from enum import Enum
-
 from pathlib import Path
-
 import json
 
 class Utils:
@@ -20,29 +18,6 @@ class Utils:
         
         except FileNotFoundError:
             return {}
-
-class RoutineResults():
-    def __init__(self, status: bool = False, err_reason: str = "", payload = None):
-        self.__status = status
-        self.__err_reason = err_reason
-        self.__payload = payload
-
-    @property
-    def status(self):
-        return self.__status
-
-    @property
-    def err_reason(self):
-        return self.__err_reason
-
-    @property
-    def payload(self):
-        return self.__payload
-
-class Display:
-    @staticmethod
-    def inform() -> None:
-        pass
 
 class Manual:
     @staticmethod
