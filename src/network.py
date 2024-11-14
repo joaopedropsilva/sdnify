@@ -154,14 +154,12 @@ class ServicesController:
             
             if method == "POST":
                 result = self.__flow_manager.create(policy_data)
-
             elif method == "PUT":
                 result = self.__flow_manager.update(policy_data)
-
             elif method == "DELETE":
                 result = self.__flow_manager.remove(policy_data)
             
-            else :
+            else:
                 return jsonify({"error": "Método HTTP Inválido."}), 405
         
             if result.status:
