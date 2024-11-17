@@ -109,3 +109,25 @@ class FlowManager:
     def remove(self, policy: Policy) -> bool:
         pass
 
+class Managers:
+    def __init__(self):
+        self.__virtual_network = VirtualNetworkManager()
+        self.__flow = FlowManager()
+        self.__is_network_alive = False
+
+    @property
+    def virtual_network(self) -> VirtualNetworkManager:
+        return self.__virtual_network
+
+    @property
+    def flow(self) -> FlowManager:
+        return self.__flow
+
+    @property
+    def is_network_alive(self) -> bool:
+        return self.__is_network_alive
+
+    @is_network_alive.setter
+    def is_network_alive(self, network_status: bool) -> None:
+        self.__is_network_alive = network_status
+

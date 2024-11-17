@@ -1,43 +1,45 @@
 from flask import Flask, Response, jsonify, request
 
-app = Flask(__name__)
+from management import Managers
 
-# Remover dependências antigas das classes
+app = Flask(__name__)
+managers = Managers()
 
 @app.route("/start", method="POST")
-def start(self) -> Response:
-    if not self.__topo_manager.generate():
-        return Response(
-            response="Não foi possível iniciar a rede",
-            status=500
-        )
+def start() -> Response:
+    if managers.is_network_alive:
+        return Response(response="Rede já iniciada", status=409)
 
-    return Response(
-        response="Rede iniciada com sucesso",
-        status=201
-    )
+    if not managers.virtual_network.generate():
+        return Response(response="Não foi possível iniciar a rede", status=500)
 
+    return Response(response="Rede iniciada com sucesso", status=201)
 
 @app.route("/destroy")
-def destroy(self) -> Response:
-    self.__topo_manager.destroy()
+def destroy() -> Response:
+    if not managers.is_network_alive:
+        return Response(response="A rede não foi localizada", status=500)
+
+    managers.virtual_network.destroy()
+
+    return Response(status=204)
 
 @app.route("/get_statistics")
-def get_statistics(self) -> Response:
+def get_statistics() -> Response:
     return "ok"
 
 @app.route("/manage_policy", methods=["POST", "PUT", "DELETE"])
-def manage_policy(self) -> Response:
+def manage_policy() -> Response:
     try:
         policy_data = request.json
         method = request.method
         
         if method == "POST":
-            result = self.__flow_manager.create(policy_data)
+            result = managers.flow.create(policy_data)
         elif method == "PUT":
-            result = self.__flow_manager.update(policy_data)
+            result = managers.flow.update(policy_data)
         elif method == "DELETE":
-            result = self.__flow_manager.remove(policy_data)
+            result = managers.flow.remove(policy_data)
         
         else:
             return jsonify({"error": "Método HTTP Inválido."}), 405
@@ -55,8 +57,8 @@ def manage_policy(self) -> Response:
         return jsonify({"error": "Erro no Servidor.", "details": str(e)}), 500
     
 @app.route("/capture_alerts")
-def capture_alerts(self, policy_data: dict) -> Response:
+def capture_alerts(policy_data: dict) -> Response:
     return "ok"
 
-app.run()
-
+if __name__ == "__main__":
+    app.run()

@@ -1,6 +1,7 @@
 import argparse
 import requests
 
+
 class Actions:
     BASE_URL = "http://127.0.0.1:5000"  # URL do Flask Server onde a API está rodando
 
