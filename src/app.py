@@ -1,6 +1,7 @@
 from flask import Flask, Response, jsonify, request
 
 from management import Managers
+from data import Warning, Error
 
 app = Flask(__name__)
 managers = Managers()
@@ -8,21 +9,28 @@ managers = Managers()
 @app.route("/start", method="POST")
 def start() -> Response:
     if managers.is_network_alive:
-        return Response(response="Rede já iniciada", status=409)
+        return Response(response=Warning.NetworkAlreadyUp, status=409)
 
-    if not managers.virtual_network.generate():
-        return Response(response="Não foi possível iniciar a rede", status=500)
+    generation_result = managers.virtual_network.generate()
 
-    return Response(response="Rede iniciada com sucesso", status=201)
+    status = 201
+    if isinstance(generation_result, Error):
+        status = 500
+
+    return Response(response=generation_result, status=status)
 
 @app.route("/destroy")
 def destroy() -> Response:
     if not managers.is_network_alive:
-        return Response(response="A rede não foi localizada", status=500)
+        return Response(response=Warning.NetworkUnreachable, status=500)
 
-    managers.virtual_network.destroy()
+    destruction_result = managers.virtual_network.destroy()
 
-    return Response(status=204)
+    status = 200
+    if isinstance(destruction_result, Error):
+        status=500
+
+    return Response(response=destruction_result, status=status)
 
 @app.route("/get_statistics")
 def get_statistics() -> Response:

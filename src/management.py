@@ -2,7 +2,7 @@ from mininet.clean import Cleanup
 from typing import List
 
 from utils import File
-from data import NetworkBuilder, Policy, Error
+from data import NetworkBuilder, Policy, Success, Error
 
 
 class VirtualNetworkManager:
@@ -11,29 +11,31 @@ class VirtualNetworkManager:
         self.__builder = NetworkBuilder(topo_schema_path=topo_schema_path)
         self.__net = None
 
-    def generate(self) -> bool:
-        try:
-            self.__net = self.__builder.build_network()
-            self.__net.start()
+    def generate(self) -> Success | Error:
+        (build_result, net) = self.__builder.build_network()
 
-            return True
-        except Error.InvalidTopology:
-            return False
-        except Exception:
-            return False
+        if isinstance(build_result, Success):
+            if net is not None:
+                self.__net = net
+                self.__net.start()
 
-    def destroy(self) -> bool:
-        try:
-            if self.__net is not None:
+        return build_result
+
+    def destroy(self) -> Success | Error:
+        operation_result = Success.NetworkDestructionOk
+
+        if self.__net is not None:
+            try:
                 self.__net.stop()
+            except Exception:
+                operation_result = Error.NetworkDestructionFailed
 
-            Cleanup()
-            return True
-        except Exception:
-            return False
+        Cleanup()
 
-    def report_state(self) -> bool:
-        return True
+        return operation_result
+
+    def report_state(self) -> None:
+        pass
 
 class FlowManager:
     def __init__(self):
@@ -64,12 +66,12 @@ class FlowManager:
 
     def __init_framework_config(self) -> bool:
         # inicializa o arquivo de config do controlador
-        pass
+        return False
 
     def __update_tables(self) -> bool:
         # altera o arquivo de config do controlador para lidar
         # com uma nova política ou com redirecionamento de tráfego
-        pass
+        return False
 
     def __process_alerts(self) -> bool:
         # recebe o alerta do monitor
