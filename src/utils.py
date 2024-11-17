@@ -1,4 +1,3 @@
-from flask import Flask
 from pathlib import Path
 from json import load
 
@@ -42,9 +41,6 @@ class File:
         return config \
                 if config_path.exists() \
                 else config_example
-
-class Api:
-    app = Flask(__name__)
 
 class Manual:
     @staticmethod

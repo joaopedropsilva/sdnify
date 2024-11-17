@@ -1,33 +1,16 @@
 from mininet.node import RemoteController
 from mininet.topo import Topo
+from mininet.net import Mininet
 from enum import Enum
 
+from utils import File
 
-class Topology(Topo):
-    __CONTROLLER_NAME = "c0"
-    __CONTROLLER_ADDR = "faucet"
-    __OPF_PORT = 6653
-
-    def __init__(self, topology: dict, controller: RemoteController):
-        self.__topology = topology
-        self.__controller = controller
-
-    @classmethod
-    def create_controller(cls,
-                          name: str = "",
-                          addr: str = "",
-                          port: int = 0) -> RemoteController:
-        return RemoteController(
-            name=name if name != "" else cls.__CONTROLLER_NAME,
-            ip=addr if addr != "" else cls.__CONTROLLER_ADDR,
-            port=port if port != 0 else cls.__OPF_PORT
-        )
-
-    def build(self) -> None:
-        for host in self.__topology["hosts"]:
+class CustomTopo(Topo):
+    def build(self, topo_schema: dict) -> None:
+        for host in topo_schema["hosts"]:
             self.addHost(host)
 
-        for switch in self.__topology["switches"]:
+        for switch in topo_schema["switches"]:
             id = switch["id"]
             links = switch["links"]
 
@@ -36,19 +19,44 @@ class Topology(Topo):
             for host in links:
                 self.addLink(host, id)
 
-    def validate(self) -> bool:
+class NetworkBuilder():
+    __DEFAULT_CONTROLLER_NAME = "c0"
+    __DEFAULT_CONTROLLER_ADDR = "faucet"
+    __DEFAULT_OPF_PORT = 6653
+
+    def __init__(self, topo_schema_path: str, controller_options: dict = {}):
+        self.__topo_schema_path = topo_schema_path
+        self.__topo = None
+        self.__controller_name = controller_options["name"] \
+                                    if len(controller_options) \
+                                    else self.__DEFAULT_CONTROLLER_NAME
+        self.__controller_addr = controller_options["addr"] \
+                                    if len(controller_options) \
+                                    else self.__DEFAULT_CONTROLLER_ADDR
+        self.__opf_port = controller_options["opf_port"] \
+                                    if len(controller_options) \
+                                    else self.__DEFAULT_OPF_PORT
+
+    def __create_controller(self) -> RemoteController:
+        return RemoteController(
+            name=self.__controller_name,
+            addr=self.__controller_addr,
+            port=self.__opf_port
+        )
+
+    def __validate_topo(self, schema: dict) -> bool:
         try:
-            if not isinstance(self.__topology.get("hosts"), list):
+            if not isinstance(schema.get("hosts"), list):
                 raise Error.InvalidTopology("Chave 'Hosts' deve ser do tipo list.")
             
-            for host in self.__topology["hosts"]:
+            for host in schema["hosts"]:
                 if not isinstance(host, str):
                     raise Error.InvalidTopology("Cada item da lista 'Hosts' deve ser passado como string.")
             
-            if not isinstance(self.__topology.get("switches"), list):
+            if not isinstance(schema.get("switches"), list):
                 raise Error.InvalidTopology("Chave 'Switches' deve ser do tipo 'list'.")
             
-            for switch in self.__topology["switches"]:
+            for switch in schema["switches"]:
                 if not isinstance(switch, dict):
                     raise Error.InvalidTopology("Chave 'Switches' deve ser composta por uma lista de objetos.")
                 if "id" not in switch or not isinstance(switch["id"], str):
@@ -68,6 +76,23 @@ class Topology(Topo):
         
         finally:
             print("Topologia Válida.")
+
+    def __build_topo(self):
+        topo_schema = File.read_json_from(self.__topo_schema_path)
+        is_topo_valid = self.__validate_topo(schema=topo_schema)
+
+        if not is_topo_valid:
+            raise Error.InvalidTopology()
+
+        self.__topo = CustomTopo(topo_schema=topo_schema)
+
+    def build_network(self) -> Mininet:
+        self.__build_topo()
+
+        return Mininet(
+            topo=self.__topo,
+            controller=self.__create_controller()
+        )
 
 class Policy:
     class PolicyTypes(Enum):
