@@ -5,6 +5,11 @@ from json import load
 
 class File:
     @staticmethod
+    def get_project_path():
+        src_path = Path(__file__).parent.resolve()
+        return Path(src_path).parent.resolve()
+
+    @staticmethod
     def read_json_from(filepath: str) -> dict:
         try:
             path = Path(filepath)
@@ -19,6 +24,24 @@ class File:
         
         except FileNotFoundError:
             return {}
+
+    @classmethod
+    def get_config(cls) -> dict:
+        config_path = Path(
+            cls.get_project_path(),
+            "config.json"
+        )
+        config_example_path = Path(
+            cls.get_project_path(),
+            "config.example.json"
+        )
+
+        config = cls.read_json_from(str(config_path.resolve()))
+        config_example = cls.read_json_from(str(config_example_path.resolve()))
+
+        return config \
+                if config_path.exists() \
+                else config_example
 
 class Api:
     app = Flask(__name__)

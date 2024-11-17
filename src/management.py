@@ -3,7 +3,7 @@ from mininet.net import Mininet
 from typing import List
 import requests
 
-from utils import Api
+from utils import File, Api
 from data import Policy
 
 
@@ -78,7 +78,7 @@ class ActionDirector:
 
 class ServicesController:
     def __init__(self, topology_filepath: str):
-        self.__config = File.read_json_from() # ler do caminho do projeto
+        self.__config = File.get_config()
         self.__topo_manager = TopoManager(topology_filepath=topology_filepath)
         self.__flow_manager = FlowManager()
 
