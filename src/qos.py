@@ -53,7 +53,7 @@ class FlowManager:
                     err_reason=f"Política de tráfego {policy.traffic_type} já existe. Abortando a operação de criacao."
                 )
             
-            #A partir daquie admite-se que a politica ainda nao existe e que ela apresenta
+            #A partir daqui admite-se que a politica ainda nao existe e que ela apresenta
             #todos os parametros necessarios para a criacao de uma nova regra.
 
             # cria a estrutura de regra com base na política
@@ -156,17 +156,23 @@ class FlowManager:
 
         # Criação de regra genérica com base no tipo de tráfego
         rule = {
-            "dl_type": "0x800",  # Endereços IPv4 (exemplo genérico)
-            "nw_proto": 17 if policy.traffic_type == PolicyTypes.VOIP else 6,  # UDP (VoIP) ou TCP (HTTP e FTP)
-            "tcp_dst": 80 if policy.traffic_type != PolicyTypes.VOIP else None,  # Porta padrão para HTTP/FTP
-            "udp_dst": 53 if policy.traffic_type == PolicyTypes.VOIP else None,  # Porta padrão UDP para VoIP
-            "actions": {
-                "allow": 1,  # Permitir
-                "set_fields": [
-                    {"bandwidth_reserved": reserved_bandwidth},  # Percentual tratado da banda reservada em bps
-                ]   
-            }
+            "acl_name": policy.name,  # Nome da política (como acl_name no formato do Faucet)
+            "rules": [
+                {
+                    "dl_type": "0x800",  # Endereços IPv4 (exemplo genérico)
+                    "nw_proto": 17 if policy.traffic_type == PolicyTypes.VOIP else 6,  # UDP (VoIP) ou TCP (HTTP e FTP)
+                    "udp_dst": 53 if policy.traffic_type == PolicyTypes.VOIP else None,  # Porta padrão UDP para VoIP
+                    "tcp_dst": 80 if policy.traffic_type != PolicyTypes.VOIP else None,  # Porta padrão para HTTP/FTP
+                    "actions": {
+                        "allow": 1,  # Permitir
+                        "set_fields": [
+                            {"bandwidth_reserved": reserved_bandwidth},  # Percentual tratado da banda reservada em bps
+                        ]
+                    }
+                }
+            ]
         }
+
 
         return rule
 
