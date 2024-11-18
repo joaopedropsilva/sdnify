@@ -1,47 +1,75 @@
+from mininet.clean import Cleanup
 from typing import List
-
-from information import PolicyTypes, RoutineResults
-
 import yaml
 
-class Policy:
-    def __init__(self, name: str, traffic_type: PolicyTypes, bandwidth_reserved: int):
-        self.name = name
-        self.traffic_type = traffic_type
-        self.bandwidth_reserved = bandwidth_reserved
+from utils import File
+from data import NetworkBuilder, Policy, Success, Error
+
+
+class VirtualNetworkManager:
+    def __init__(self):
+        topo_schema_path = File.get_config()["topo_schema_path"]
+        self.__builder = NetworkBuilder(topo_schema_path=topo_schema_path)
+        self.__net = None
+
+    def generate(self) -> Success | Error:
+        (build_result, net) = self.__builder.build_network()
+
+        if isinstance(build_result, Success):
+            if net is not None:
+                self.__net = net
+                self.__net.start()
+
+        return build_result
+
+    def destroy(self) -> Success | Error:
+        operation_result = Success.NetworkDestructionOk
+
+        if self.__net is not None:
+            try:
+                self.__net.stop()
+            except Exception:
+                operation_result = Error.NetworkDestructionFailed
+
+        Cleanup()
+
+        return operation_result
+
+    def report_state(self) -> None:
+        pass
 
 class FlowManager:
     def __init__(self):
         self.__config: dict = {}
         self.policies: List[Policy] = []
 
-    def __validate(self, policy: Policy) -> RoutineResults:
+    def __validate(self, policy: Policy) -> bool:
         try:
             errors = []
 
             if not policy.name:
                 errors.append("Nome de política inválido.")
             
-            if not isinstance(policy.traffic_type, PolicyTypes):
+            if not isinstance(policy.traffic_type, Policy.PolicyTypes):
                 errors.append("Tipo de tráfego fornecido é inválido.")
             
             if not (0 < policy.bandwidth_reserved <= 1000):
                 errors.append("Largura de banda reservada deve estar entre 1 e 100 Mbps.")
 
             if errors:
-                return RoutineResults(status=False, err_reason="; ".join(errors))
+                return False
             
-        except Exception as e:
-            return RoutineResults(status=False, err_reason="Erro de validação: {str(e)}")
+        except Exception:
+            return False
         
         finally:
             print("Política validada com sucesso.")
 
-    def __init_framework_config(self) -> RoutineResults:
+    def __init_framework_config(self) -> bool:
         # inicializa o arquivo de config do controlador
-        pass
+        return False
 
-    def __update_tables(self, policy: Policy, operation : str) -> RoutineResults:
+    def __update_tables(self, policy: Policy, operation: str) -> bool:
         # altera o arquivo de config do controlador para lidar
         # com uma nova política ou com redirecionamento de tráfego
 
@@ -52,7 +80,6 @@ class FlowManager:
                     status=False,
                     err_reason=f"Política de tráfego {policy.traffic_type} já existe. Abortando a operação de criacao."
                 )
-            
             #A partir daqui admite-se que a politica ainda nao existe e que ela apresenta
             #todos os parametros necessarios para a criacao de uma nova regra.
 
@@ -62,7 +89,7 @@ class FlowManager:
             # adiciona a nova política na lista de politicas
             self.policies.append(policy)
 
-            # confirma que o tipo da politica nao existe no dicionario de configuracao 
+            # confirma que o tipo da politica nao existe no dicionario de configuracao
             # e cria uma entranda com uma lista vazia que depois recebe a regra,
             #  necessario antes de reescrever o arquivo acls.yaml do faucet
             if f"{policy.traffic_type}-traffic" not in self.__config:
@@ -220,35 +247,58 @@ class FlowManager:
         # chama redirect_traffic se necessário
         pass
 
-    def redirect_traffic(self) -> RoutineResults:
-        pass
+    def redirect_traffic(self) -> bool:
+        return False
 
-    def create(self, policy: Policy) -> RoutineResults:
+    def create(self, policy: Policy) -> bool:
         try:
             validation = self.__validate(policy)
 
-            if not validation.status == False:
-                return validation
+            if not validation:
+                return False
             
             self.policies.append(policy)
 
             update = self.__update_tables()
             
-            if update.status == False:
+            if not update:
                 self.policies.remove(policy)
-                return update
+                return False
             
-            return RoutineResults(status=True, payload="Política criada com sucesso.")
+            return True
         
         except Exception as e:
             print(f"Erro ao criar política: {e}")
-            return RoutineResults(status=False, err_reason=str(e))
+            return False
         
         finally:
             print("Operação de criação de política finalizada.")
 
-    def update(self, policy: Policy) -> RoutineResults:
+    def update(self, policy: Policy) -> bool:
         pass
 
-    def remove(self, policy: Policy) -> RoutineResults:
+    def remove(self, policy: Policy) -> bool:
         pass
+
+class Managers:
+    def __init__(self):
+        self.__virtual_network = VirtualNetworkManager()
+        self.__flow = FlowManager()
+        self.__is_network_alive = False
+
+    @property
+    def virtual_network(self) -> VirtualNetworkManager:
+        return self.__virtual_network
+
+    @property
+    def flow(self) -> FlowManager:
+        return self.__flow
+
+    @property
+    def is_network_alive(self) -> bool:
+        return self.__is_network_alive
+
+    @is_network_alive.setter
+    def is_network_alive(self, network_status: bool) -> None:
+        self.__is_network_alive = network_status
+

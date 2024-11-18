@@ -1,5 +1,5 @@
 {
-    "faucet_config_filepath": "",
-    "acls_filepath": "",
-    "prometheus_config_filepath": ""
+    "faucet_config_filepath": "/etc/faucet/faucet.yml",
+    "prometheus_config_filepath": "/etc/prometheus/prometheus.yml",
+    "acls_filepath": ""
 }
