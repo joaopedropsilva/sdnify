@@ -3,7 +3,7 @@ from typing import List
 import yaml
 
 from utils import File
-from data import NetworkBuilder, Policy, Success, Error
+from data import NetworkBuilder, Policy, PolicyTypes, Success, Error
 
 
 class VirtualNetworkManager:
@@ -39,37 +39,32 @@ class VirtualNetworkManager:
         pass
 
 class FlowManager:
+    __MIN_BANDWIDTH_RESERVED = 1
+    __MAX_BANDWIDTH_RESERVED = 100
+
     def __init__(self):
         self.__config: dict = {}
-        self.policies: List[Policy] = []
+        self.__policies: List[Policy] = []
 
-    def __validate(self, policy: Policy) -> bool:
-        try:
-            errors = []
-
-            if not policy.name:
-                errors.append("Nome de política inválido.")
-            
-            if not isinstance(policy.traffic_type, Policy.PolicyTypes):
-                errors.append("Tipo de tráfego fornecido é inválido.")
-            
-            if not (0 < policy.bandwidth_reserved <= 1000):
-                errors.append("Largura de banda reservada deve estar entre 1 e 100 Mbps.")
-
-            if errors:
-                return False
-            
-        except Exception:
-            return False
+    def __validate(self, policy: Policy) -> Success | Error:
+        # Remover
+        if policy.name == "":
+            return Error.InvalidPolicyTrafficType
         
-        finally:
-            print("Política validada com sucesso.")
+        if not isinstance(policy.traffic_type, PolicyTypes):
+            return Error.InvalidPolicyTrafficType
+        
+        if not (policy.bandwidth < self.__MIN_BANDWIDTH_RESERVED
+                and policy.bandwidth > self.__MAX_BANDWIDTH_RESERVED):
+            return Error.InvalidPolicyBandwidth
+
+        return Success.OperationOk
 
     def __init_framework_config(self) -> bool:
         # inicializa o arquivo de config do controlador
         return False
 
-    def __update_tables(self, policy: Policy, operation: str) -> bool:
+    def __update_tables(self, policy: Policy, operation: str) -> Success | Error:
         # altera o arquivo de config do controlador para lidar
         # com uma nova política ou com redirecionamento de tráfego
 
@@ -245,40 +240,30 @@ class FlowManager:
     def __process_alerts(self) -> RoutineResults:
         # recebe o alerta do monitor
         # chama redirect_traffic se necessário
-        pass
-
-    def redirect_traffic(self) -> bool:
         return False
 
-    def create(self, policy: Policy) -> bool:
-        try:
-            validation = self.__validate(policy)
+    def redirect_traffic(self) -> Success | Error:
+        return Success.OperationOk
 
-            if not validation:
-                return False
-            
-            self.policies.append(policy)
-
-            update = self.__update_tables()
-            
-            if not update:
-                self.policies.remove(policy)
-                return False
-            
-            return True
+    def create(self, policy: Policy) -> Success | Error:
+        validation_result = self.__validate(policy)
+        if isinstance(validation_result, Error):
+            return validation_result
         
-        except Exception as e:
-            print(f"Erro ao criar política: {e}")
-            return False
+        self.__policies.append(policy)
+
+        tables_update_result = self.__update_tables()
+        if isinstance(tables_update_result, Error):
+            self.__policies.remove(policy)
+            return tables_update_result
         
-        finally:
-            print("Operação de criação de política finalizada.")
+        return Success.PolicyCreationOk
 
-    def update(self, policy: Policy) -> bool:
-        pass
+    def update(self, policy: Policy) -> Success | Error:
+        return Success.OperationOk
 
-    def remove(self, policy: Policy) -> bool:
-        pass
+    def remove(self, policy: Policy) -> Success | Error:
+        return Success.OperationOk
 
 class Managers:
     def __init__(self):

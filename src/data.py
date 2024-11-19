@@ -18,6 +18,7 @@ class Success(Enum):
     OperationOk = "Operação bem sucedida."
     NetworkBuildOk = "Rede virtual instanciada com sucesso."
     NetworkDestructionOk = "Rede virtual destruída com sucesso."
+    PolicyCreationOk = "Política de classificação criada com sucesso."
 
 class Error(Enum):
     HostsKeyWrongTypeInTopoSchema = "Chave 'hosts' deve ser do tipo list."
@@ -29,6 +30,8 @@ class Error(Enum):
     LinksWrongValueInTopoSchema = "Chave 'links' nos objetos da lista 'switches' deve ser do tipo string."
     NetworkBuildFailed = "Falha ao instanciar a rede virtual."
     NetworkDestructionFailed = "Falha ao destruir a rede virtual."
+    InvalidPolicyTrafficType = "Tipo de tráfego inválido para política de classificação."
+    InvalidPolicyBandwidth = "Largura de banda inválida para política de classificação."
 
 class CustomTopo(Topo):
     def build(self, topo_schema: dict) -> None:
@@ -116,8 +119,8 @@ class NetworkBuilder():
         return (build_result, net)
 
 class Policy:
-    def __init__(self, name: str, traffic_type: PolicyTypes, bandwidth_reserved: int):
+    def __init__(self, name: str, traffic_type: PolicyTypes, bandwidth: int):
         self.name = name
         self.traffic_type = traffic_type
-        self.bandwidth_reserved = bandwidth_reserved
+        self.bandwidth = bandwidth
 
