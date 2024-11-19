@@ -1,4 +1,4 @@
-from flask import Flask, Response, jsonify, request
+from flask import Flask, Response, request
 
 from management import Managers
 from data import Warning, Error
@@ -39,30 +39,25 @@ def get_statistics() -> Response:
 @app.route("/manage_policy", methods=["POST", "PUT", "DELETE"])
 def manage_policy() -> Response:
     try:
-        policy_data = request.json
+        policy = request.json
         method = request.method
         
         if method == "POST":
-            result = managers.flow.create(policy_data)
+            creation_result = managers.flow.create(policy)
+
+            status = 201
+            if isinstance(creation_result, Error):
+                status = 400
+
+            return Response(response=creation_result, status=status)
         elif method == "PUT":
-            result = managers.flow.update(policy_data)
+            update_result = managers.flow.update(policy)
         elif method == "DELETE":
-            result = managers.flow.remove(policy_data)
-        
+            removal_result = managers.flow.remove(policy)
         else:
-            return jsonify({"error": "Método HTTP Inválido."}), 405
-    
-        if result.status:
-            return jsonify({"status": "success", "payload": result.payload}), 200
-        
-        if result.status:
-            return jsonify({"status": "failure", "payload": result.err_reason}), 400
-
-    except KeyError as e:
-        return jsonify({"error": "Dados Inválidos ou Incompletos.", "details": str(e)}), 500
-
-    except Exception as e:
-        return jsonify({"error": "Erro no Servidor.", "details": str(e)}), 500
+            return Response(response="Método HTTP inválido.", status=405)
+    except Exception:
+        return Response(status=500)
     
 @app.route("/capture_alerts")
 def capture_alerts(policy_data: dict) -> Response:
@@ -70,3 +65,4 @@ def capture_alerts(policy_data: dict) -> Response:
 
 if __name__ == "__main__":
     app.run()
+
