@@ -41,7 +41,7 @@ class VirtualNetworkManager:
 class FlowManager:
     __MIN_BANDWIDTH_RESERVED = 1
     __MAX_BANDWIDTH_RESERVED = 100
-
+    
     def __init__(self):
         self.__config: dict = {}
         self.__policies: List[Policy] = []
@@ -71,10 +71,8 @@ class FlowManager:
         if operation == "create":
             # Verifica se a política já existe, e caso exista, retorna aborta a operacao
             if any(p.traffic_type == policy.traffic_type for p in self.policies):
-                return RoutineResults(
-                    status=False,
-                    err_reason=f"Política de tráfego {policy.traffic_type} já existe. Abortando a operação de criacao."
-                )
+                return Error.PolicyAlreadyExists
+            
             #A partir daqui admite-se que a politica ainda nao existe e que ela apresenta
             #todos os parametros necessarios para a criacao de uma nova regra.
 
@@ -95,10 +93,7 @@ class FlowManager:
             # faz a escrita no arquivo acls.yaml e retorna a mensagem confirmando 
             self.__write_config()
 
-            return RoutineResults(
-                status=True,
-                payload=f"Política de tráfego {policy.traffic_type} criada com sucesso."
-            )
+            return Success.PolicyCreationOk
 
         elif operation == "update":
             for existing_policy in self.policies:
@@ -110,32 +105,20 @@ class FlowManager:
                         # Atualiza a configuração
                         self.__config[f"{policy.traffic_type}-traffic"] = [rule]
                         self.__write_config()
-                        return RoutineResults(
-                            status=True,
-                            payload=f"Política de tráfego {policy.traffic_type} atualizada com sucesso."
-                        )
+                        return Success.PolicyUpdateOk
                     else:
                         # Se a banda não mudou, não faz nada
-                        return RoutineResults(
-                            status=True,
-                            payload=f"Política de tráfego {policy.traffic_type} já está com a banda reservada correta."
-                        )
+                        return Error.BandwidthAlreadyCorrect
 
             # caso a politica nao exista, retorna a negativa 
-            return RoutineResults(
-                status=False,
-                err_reason=f"Política de tráfego {policy.traffic_type} não encontrada para atualização."
-            )
+            return Error.PolicyNotFound
 
         elif operation == "delete":
             # Verifica se a política existe na lista de políticas
             policy_exists = any(p.traffic_type == policy.traffic_type for p in self.policies)
 
             if not policy_exists:
-                return RoutineResults(
-                    status=False,
-                    err_reason=f"Política de tráfego {policy.traffic_type} não encontrada para remoção."
-                )
+                return Error.PolicyNotFoundForDeletion
 
             # Remove a política da lista de políticas
             self.policies = [p for p in self.policies if p.traffic_type != policy.traffic_type]
@@ -147,16 +130,10 @@ class FlowManager:
             # Atualiza o arquivo acls.yaml com a configuração modificada
             self.__write_config()
 
-            return RoutineResults(
-                status=True,
-                payload=f"Política de tráfego {policy.traffic_type} removida com sucesso."
-            )
+            return Success.PolicyDeletionOk
 
         else:
-            return RoutineResults(
-                status=False,
-                err_reason="Operação desconhecida. Use 'create', 'update' ou 'delete'."
-            )
+            return Error.UnknownOperation
         
 
     def __create_rule(self, policy: Policy):
@@ -168,10 +145,7 @@ class FlowManager:
 
         # Validação da banda reservada entre 1% e 100%
         if not (1 <= policy.bandwidth_reserved <= 100):
-            return RoutineResults(
-                status=False,
-                err_reason="A banda reservada deve ser um valor entre 1 e 100."
-            )
+            return Error.InvalidBandwidthValue
 
         # Calcula a banda reservada em Mbps e converte para bps
         reserved_bandwidth = (policy.bandwidth_reserved / 100) * total_bandwidth * 1000000
@@ -204,7 +178,7 @@ class FlowManager:
         """
         Atualiza o arquivo acls.yaml com o conteúdo de self.__config,
         mantendo as entradas já existentes.
-        Retorna um objeto RoutineResults com o status da operação.
+        Retorna um objeto Error ou Success com o status da operação.
         """
 
         try:
@@ -224,17 +198,11 @@ class FlowManager:
                 yaml.dump(existing_config, file, default_flow_style=False)
 
             # Retorna um sucesso com a mensagem
-            return RoutineResults(
-                status=True,
-                payload="Arquivo acls.yaml atualizado com sucesso!"
-            )
+            return Success.ConfigWriteOk
 
         except Exception as e:
             # Retorna erro com a mensagem de exceção
-            return RoutineResults(
-                status=False,
-                err_reason=f"Erro ao escrever no arquivo acls.yaml: {e}"
-            )
+            return Error.ConfigWriteFailure
 
 
     def __process_alerts(self) -> RoutineResults:

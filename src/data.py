@@ -19,6 +19,10 @@ class Success(Enum):
     NetworkBuildOk = "Rede virtual instanciada com sucesso."
     NetworkDestructionOk = "Rede virtual destruída com sucesso."
     PolicyCreationOk = "Política de classificação criada com sucesso."
+    PolicyCreationOk = "Política de tráfego criada com sucesso."
+    PolicyUpdateOk = "Política de tráfego atualizada com sucesso."
+    PolicyDeletionOk = "Política de tráfego removida com sucesso."
+    ConfigWriteOk = "Configuração escrita no arquivo acls.yaml com sucesso."
 
 class Error(Enum):
     HostsKeyWrongTypeInTopoSchema = "Chave 'hosts' deve ser do tipo list."
@@ -32,6 +36,12 @@ class Error(Enum):
     NetworkDestructionFailed = "Falha ao destruir a rede virtual."
     InvalidPolicyTrafficType = "Tipo de tráfego inválido para política de classificação."
     InvalidPolicyBandwidth = "Largura de banda inválida para política de classificação."
+    PolicyAlreadyExists = "A política de tráfego já existe. Operação abortada."
+    BandwidthAlreadyCorrect = "A largura de banda reservada já está configurada corretamente."
+    PolicyNotFound = "Política de tráfego não encontrada."
+    PolicyNotFoundForDeletion = "Política de tráfego não encontrada para remoção."
+    UnknownOperation = "Operação desconhecida. Use 'create', 'update' ou 'delete'."
+    InvalidBandwidthValue = "A banda reservada deve ser um valor entre 1 e 100."
 
 class CustomTopo(Topo):
     def build(self, topo_schema: dict) -> None:
