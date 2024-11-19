@@ -14,12 +14,16 @@ RUN apt-get update \
     iputils-ping \
     mininet \
     net-tools \
+    openvswitch-switch \
+    openvswitch-testcontroller \
     tcpdump \
     vim \
     python3.10-venv \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf ./.venv \
-    && /root/app/create_env.sh
+    && chmod +x ./ENTRYPOINT.sh
 
-EXPOSE 6653
+EXPOSE 6633 6653 6640
+
+ENTRYPOINT ["./ENTRYPOINT.sh"]
 

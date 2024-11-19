@@ -10,6 +10,9 @@ services:
     environment:
      - DISPLAY
     volumes:
+     - ./etc/mininet/.bashrc:/root/.bashrc
+     - ./src/:/root/app/src/
+     - ./tests/:/root/app/tests/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
   faucet:
