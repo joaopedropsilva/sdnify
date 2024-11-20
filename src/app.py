@@ -59,9 +59,32 @@ def manage_policy() -> Response:
     except Exception:
         return Response(status=500)
     
-@app.route("/capture_alerts")
+@app.route("/capture_alerts", methods=["POST"])
 def capture_alerts(policy_data: dict) -> Response:
-    return "ok"
+    try:
+        alerts_data = request.json
+        alerts = alerts_data.get("alerts", None)
+        
+        result = managers.__flow.__process_alerts(alerts)
+
+        if result.status is False: 
+            return Response(
+                response=json.dumps({"error": result.err_reason}),
+                status=500,
+                mimetype="application/json",
+            )
+        
+        return Response(
+                response=json.dumps({"message": "Alertas processados com sucesso."}),
+                status=200,
+                mimetype="application/json",
+            )
+    except Exception as e:
+        return Response(
+            response=json.dumps({"error": "Internal server error", "details": str(e)}),
+            status=500,
+            mimetype="application/json",
+        )
 
 if __name__ == "__main__":
     app.run()
