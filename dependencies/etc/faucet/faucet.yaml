@@ -1,0 +1,19 @@
+---
+vlans:
+    test:
+        vid: 100
+        description: "vlan test"
+
+dps:
+    sw1:
+        dp_id: 0x1
+        hardware: "Open vSwitch"
+        interfaces:
+            1:
+                name: "h1"
+                description: "host1 container"
+                native_vlan: test
+            2:
+                name: "h2"
+                description: "host2 container"
+                native_vlan: test
