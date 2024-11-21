@@ -65,9 +65,9 @@ def capture_alerts(policy_data: dict) -> Response:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
         
-        result = managers.__flow.__process_alerts(alerts)
+        result = managers.__flow.process_alerts(alerts)
 
-        if result.status is False: 
+        if isinstance(result, Error): 
             return Response(
                 response=json.dumps({"error": result.err_reason}),
                 status=500,
@@ -79,6 +79,7 @@ def capture_alerts(policy_data: dict) -> Response:
                 status=200,
                 mimetype="application/json",
             )
+
     except Exception as e:
         return Response(
             response=json.dumps({"error": "Internal server error", "details": str(e)}),
