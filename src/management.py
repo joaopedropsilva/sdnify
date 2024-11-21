@@ -2,8 +2,8 @@ from mininet.clean import Cleanup
 from typing import List
 import yaml
 
-from utils import File
-from data import NetworkBuilder, Policy, PolicyTypes, Success, Error
+from src.utils import File
+from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
 
 
 class VirtualNetworkManager:

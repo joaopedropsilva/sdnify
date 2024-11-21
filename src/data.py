@@ -3,7 +3,7 @@ from mininet.topo import Topo
 from mininet.net import Mininet
 from enum import Enum
 
-from utils import File
+from src.utils import File
 
 class PolicyTypes(Enum):
     VOIP = "voip",
@@ -19,7 +19,6 @@ class Success(Enum):
     NetworkBuildOk = "Rede virtual instanciada com sucesso."
     NetworkDestructionOk = "Rede virtual destruída com sucesso."
     PolicyCreationOk = "Política de classificação criada com sucesso."
-    PolicyCreationOk = "Política de tráfego criada com sucesso."
     PolicyUpdateOk = "Política de tráfego atualizada com sucesso."
     PolicyDeletionOk = "Política de tráfego removida com sucesso."
     ConfigWriteOk = "Configuração escrita no arquivo acls.yaml com sucesso."
@@ -58,61 +57,66 @@ class CustomTopo(Topo):
                 self.addLink(host, id)
 
 class NetworkBuilder():
-    __DEFAULT_CONTROLLER_NAME = "c0"
-    __DEFAULT_CONTROLLER_ADDR = "faucet"
-    __DEFAULT_OPF_PORT = 6653
+    _DEFAULT_CONTROLLER_NAME = "c0"
+    _DEFAULT_CONTROLLER_IP = "faucet"
+    _DEFAULT_OPF_PORT = 6653
 
     def __init__(self, topo_schema_path: str, controller_options: dict = {}):
-        self.__topo_schema_path = topo_schema_path
-        self.__controller_name = controller_options["name"] \
+        self._topo_schema_path = topo_schema_path
+        self._controller_name = controller_options["name"] \
                                     if len(controller_options) \
-                                    else self.__DEFAULT_CONTROLLER_NAME
-        self.__controller_addr = controller_options["addr"] \
+                                    else self._DEFAULT_CONTROLLER_NAME
+        self._controller_ip = controller_options["ip"] \
+                                   if len(controller_options) \
+                                    else self._DEFAULT_CONTROLLER_IP
+        self._opf_port = controller_options["opf_port"] \
                                     if len(controller_options) \
-                                    else self.__DEFAULT_CONTROLLER_ADDR
-        self.__opf_port = controller_options["opf_port"] \
-                                    if len(controller_options) \
-                                    else self.__DEFAULT_OPF_PORT
+                                    else self._DEFAULT_OPF_PORT
 
-    def __create_controller(self) -> RemoteController:
+    def _create_controller(self) -> RemoteController:
         return RemoteController(
-            name=self.__controller_name,
-            addr=self.__controller_addr,
-            port=self.__opf_port
+            name=self._controller_name,
+            ip=self._controller_ip,
+            port=self._opf_port
         )
 
-    def __validate_topo(self,
+    def _validate_topo(self,
                         schema: dict) \
                         -> Success | Error:
-        if not isinstance(schema["hosts"], list):
+        hosts_key = "hosts"
+        switches_key = "switches"
+        id_key = "id"
+        links_key = "links"
+
+        if not isinstance(schema[hosts_key], list):
             return Error.HostsKeyWrongTypeInTopoSchema
         
-        for host in schema["hosts"]:
+        for host in schema[hosts_key]:
             if not isinstance(host, str):
                 return Error.HostsKeyWrongValueInTopoSchema
         
-        if not isinstance(schema["switches"], list):
+        if not isinstance(schema[switches_key], list):
             return Error.SwitchesKeyWrongTypeInTopoSchema
         
-        for switch in schema["switches"]:
+        for switch in schema[switches_key]:
             if not isinstance(switch, dict):
                 return Error.SwitchesKeyWrongValueInTopoSchema
 
-            if "id" not in switch or not isinstance(switch["id"], str):
+            if id_key not in switch or not isinstance(switch[id_key], str):
                 return Error.SwitchObjectWithNoIdInTopoSchema
 
-            if "link" not in switch or not isinstance(switch["link"], list):
+            if links_key not in switch or not isinstance(switch[links_key], list):
                 return Error.SwitchObjectWithNoLinksInTopoSchema
             
-            for link in switch["link"]:
+            for link in switch[links_key]:
                 if not isinstance(link, str):
                     return Error.LinksWrongValueInTopoSchema
 
         return Success.OperationOk
 
     def build_network(self) -> tuple[Success | Error, Mininet | None]:
-        topo_schema = File.read_json_from(self.__topo_schema_path)
-        validation_result = self.__validate_topo(schema=topo_schema)
+        topo_schema = File.read_json_from(self._topo_schema_path)
+        validation_result = self._validate_topo(schema=topo_schema)
 
         if not isinstance(validation_result, Success):
             return (validation_result, None)
@@ -121,7 +125,7 @@ class NetworkBuilder():
         build_result = None
         try:
             net = Mininet(topo=CustomTopo(topo_schema=topo_schema),
-                          controller=self.__create_controller())
+                          controller=self._create_controller())
             build_result = Success.NetworkBuildOk
         except Exception:
             build_result = Error.NetworkBuildFailed

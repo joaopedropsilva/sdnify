@@ -1,7 +1,7 @@
 from flask import Flask, Response, request
 
-from management import Managers
-from data import Warning, Error
+from src.management import Managers
+from src.data import Warning, Error
 
 app = Flask(__name__)
 managers = Managers()
