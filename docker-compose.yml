@@ -4,7 +4,7 @@ services:
   mininet:
     build:
       context: .
-      dockerfile: mininet.Dockerfile
+      dockerfile: ./dependencies/mininet/Dockerfile
     tty: true
     privileged: true
     environment:
@@ -55,4 +55,3 @@ services:
       - 3000:3000
     links:
       - prometheus
-
