@@ -4,13 +4,13 @@ services:
   mininet:
     build:
       context: .
-      dockerfile: mininet.Dockerfile
+      dockerfile: ./dependencies/mininet/Dockerfile
     tty: true
     privileged: true
     environment:
      - DISPLAY
     volumes:
-     - ./etc/mininet/.bashrc:/root/.bashrc
+     - ./dependencies/mininet/.bashrc:/root/.bashrc
      - ./src/:/root/app/src/
      - ./tests/:/root/app/tests/
      - /tmp/.X11-unix:/tmp/.X11-unix
@@ -19,8 +19,8 @@ services:
     restart: always
     image: faucet/faucet:1.10.11
     volumes:
-      - /etc/faucet/:/etc/faucet/
-      - /var/log/faucet/:/var/log/faucet/
+      - ./dependencies/etc/faucet/:/etc/faucet/
+      - ./dependencies/var/log/faucet/:/var/log/faucet/
     ports:
       - 6653:6653
       - 9302:9302
@@ -28,8 +28,8 @@ services:
     image: faucet/gauge:1.10.11
     restart: always
     volumes:
-      - /etc/faucet/:/etc/faucet/
-      - /var/log/faucet/:/var/log/faucet/
+      - ./dependencies/etc/faucet/:/etc/faucet/
+      - ./dependencies/var/log/faucet/:/var/log/faucet/
     ports:
       - 6654:6653
       - 9303:9303
@@ -38,10 +38,10 @@ services:
     restart: always
     privileged: true
     volumes:
-      - /etc/faucet/:/etc/faucet/
-      - /var/log/faucet/:/var/log/faucet/
-      - ./etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./etc/prometheus/faucet.rules.yml:/etc/prometheus/faucet.rules.yml
+      - ./dependencies/etc/faucet/:/etc/faucet/
+      - ./dependencies/var/log/faucet/:/var/log/faucet/
+      - ./dependencies/etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./dependencies/etc/prometheus/faucet.rules.yml:/etc/prometheus/faucet.rules.yml
     ports:
       - 9090:9090
     links:
@@ -55,4 +55,3 @@ services:
       - 3000:3000
     links:
       - prometheus
-

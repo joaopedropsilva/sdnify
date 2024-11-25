@@ -21,9 +21,8 @@ RUN apt-get update \
     python3.10-venv \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf ./.venv \
-    && chmod +x ./ENTRYPOINT.sh
+    && chmod +x ./dependencies/mininet/ENTRYPOINT.sh
 
 EXPOSE 6633 6653 6640
 
-ENTRYPOINT ["./ENTRYPOINT.sh"]
-
+ENTRYPOINT ["./dependencies/mininet/ENTRYPOINT.sh"]
