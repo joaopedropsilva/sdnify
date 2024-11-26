@@ -65,7 +65,7 @@ def capture_alerts(policy_data: dict) -> Response:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
         
-        result = managers.__flow.process_alerts(alerts)
+        result = managers.flow.process_alerts(alerts)
 
         if isinstance(result, Error): 
             return Response(

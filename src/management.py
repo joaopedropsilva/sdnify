@@ -9,25 +9,25 @@ from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
 class VirtualNetworkManager:
     def __init__(self):
         topo_schema_path = File.get_config()["topo_schema_path"]
-        self.__builder = NetworkBuilder(topo_schema_path=topo_schema_path)
-        self.__net = None
+        self._builder = NetworkBuilder(topo_schema_path=topo_schema_path)
+        self._net = None
 
     def generate(self) -> Success | Error:
-        (build_result, net) = self.__builder.build_network()
+        (build_result, net) = self._builder.build_network()
 
         if isinstance(build_result, Success):
             if net is not None:
-                self.__net = net
-                self.__net.start()
+                self._net = net
+                self._net.start()
 
         return build_result
 
     def destroy(self) -> Success | Error:
         operation_result = Success.NetworkDestructionOk
 
-        if self.__net is not None:
+        if self._net is not None:
             try:
-                self.__net.stop()
+                self._net.stop()
             except Exception:
                 operation_result = Error.NetworkDestructionFailed
 
@@ -39,14 +39,14 @@ class VirtualNetworkManager:
         pass
 
 class FlowManager:
-    __MIN_BANDWIDTH_RESERVED = 1
-    __MAX_BANDWIDTH_RESERVED = 100
+    _MIN_BANDWIDTH_RESERVED = 1
+    _MAX_BANDWIDTH_RESERVED = 100
     
     def __init__(self):
-        self.__config: dict = {}
-        self.__policies: List[Policy] = []
+        self._config: dict = {}
+        self._policies: List[Policy] = []
 
-    def __validate(self, policy: Policy) -> Success | Error:
+    def _validate(self, policy: Policy) -> Success | Error:
         # Remover
         if policy.name == "":
             return Error.InvalidPolicyTrafficType
@@ -54,17 +54,17 @@ class FlowManager:
         if not isinstance(policy.traffic_type, PolicyTypes):
             return Error.InvalidPolicyTrafficType
         
-        if not (policy.bandwidth < self.__MIN_BANDWIDTH_RESERVED
-                and policy.bandwidth > self.__MAX_BANDWIDTH_RESERVED):
+        if not (policy.bandwidth < self._MIN_BANDWIDTH_RESERVED
+                and policy.bandwidth > self._MAX_BANDWIDTH_RESERVED):
             return Error.InvalidPolicyBandwidth
 
         return Success.OperationOk
 
-    def __init_framework_config(self) -> bool:
+    def _init_framework_config(self) -> bool:
         # inicializa o arquivo de config do controlador
         return False
 
-    def __update_tables(self, policy: Policy, operation: str) -> Success | Error:
+    def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
         # altera o arquivo de config do controlador para lidar
         # com uma nova política ou com redirecionamento de tráfego
 
@@ -77,7 +77,7 @@ class FlowManager:
             #todos os parametros necessarios para a criacao de uma nova regra.
 
             # cria a estrutura de regra com base na política
-            rule = self.__create_rule(policy)
+            rule = self._create_rule(policy)
 
             # adiciona a nova política na lista de politicas
             self.policies.append(policy)
@@ -85,13 +85,13 @@ class FlowManager:
             # confirma que o tipo da politica nao existe no dicionario de configuracao
             # e cria uma entranda com uma lista vazia que depois recebe a regra,
             #  necessario antes de reescrever o arquivo acls.yaml do faucet
-            if f"{policy.traffic_type}-traffic" not in self.__config:
-                self.__config[f"{policy.traffic_type}-traffic"] = []
+            if f"{policy.traffic_type}-traffic" not in self._config:
+                self._config[f"{policy.traffic_type}-traffic"] = []
 
-            self.__config[f"{policy.traffic_type}-traffic"].append(rule)
+            self._config[f"{policy.traffic_type}-traffic"].append(rule)
 
             # faz a escrita no arquivo acls.yaml e retorna a mensagem confirmando 
-            self.__write_config()
+            self._write_config()
 
             return Success.PolicyCreationOk
 
@@ -101,10 +101,10 @@ class FlowManager:
                     # Só modifica a banda se ela for diferente da atual
                     if existing_policy.bandwidth_reserved != policy.bandwidth_reserved:
                         existing_policy.bandwidth_reserved = policy.bandwidth_reserved
-                        rule = self.__create_rule(policy)
+                        rule = self._create_rule(policy)
                         # Atualiza a configuração
-                        self.__config[f"{policy.traffic_type}-traffic"] = [rule]
-                        self.__write_config()
+                        self._config[f"{policy.traffic_type}-traffic"] = [rule]
+                        self._write_config()
                         return Success.PolicyUpdateOk
                     else:
                         # Se a banda não mudou, não faz nada
@@ -124,11 +124,11 @@ class FlowManager:
             self.policies = [p for p in self.policies if p.traffic_type != policy.traffic_type]
 
             # Verifica e remove a política do dicionário de configuração, se existir
-            if f"{policy.traffic_type}-traffic" in self.__config:
-                del self.__config[f"{policy.traffic_type}-traffic"]
+            if f"{policy.traffic_type}-traffic" in self._config:
+                del self._config[f"{policy.traffic_type}-traffic"]
 
             # Atualiza o arquivo acls.yaml com a configuração modificada
-            self.__write_config()
+            self._write_config()
 
             return Success.PolicyDeletionOk
 
@@ -136,7 +136,7 @@ class FlowManager:
             return Error.UnknownOperation
         
 
-    def __create_rule(self, policy: Policy):
+    def _create_rule(self, policy: Policy):
         """
         Cria a regra de tráfego baseada na política.
         """
@@ -173,10 +173,10 @@ class FlowManager:
         return rule
 
 
-    def __write_config(self):
+    def _write_config(self):
         
         """
-        Atualiza o arquivo acls.yaml com o conteúdo de self.__config,
+        Atualiza o arquivo acls.yaml com o conteúdo de self._config,
         mantendo as entradas já existentes.
         Retorna um objeto Error ou Success com o status da operação.
         """
@@ -191,7 +191,7 @@ class FlowManager:
                 existing_config = {}
 
             # Atualiza o dicionário de configuração com as entradas existentes
-            existing_config.update(self.__config)
+            existing_config.update(self._config)
 
             # Escreve o dicionário atualizado no arquivo acls.yaml
             with open("acls.yaml", "w") as file:
@@ -205,7 +205,7 @@ class FlowManager:
             return Error.ConfigWriteFailure
 
 
-    def __process_alerts(self) -> RoutineResults:
+    def _process_alerts(self) -> RoutineResults:
         # recebe o alerta do monitor
         # chama redirect_traffic se necessário
         return False
@@ -214,22 +214,22 @@ class FlowManager:
         return Success.OperationOk
 
     def create(self, policy: Policy) -> Success | Error:
-        validation_result = self.__validate(policy)
+        validation_result = self._validate(policy)
         if isinstance(validation_result, Error):
             return validation_result
         
-        self.__policies.append(policy)
+        self._policies.append(policy)
 
-        tables_update_result = self.__update_tables()
+        tables_update_result = self._update_tables()
         if isinstance(tables_update_result, Error):
-            self.__policies.remove(policy)
+            self._policies.remove(policy)
             return tables_update_result
         
         return Success.PolicyCreationOk
 
     def update(self, policy: Policy) -> Success | Error:
         try:
-            validation = self.__validate(policy)
+            validation = self._validate(policy)
             if validation.status == False:
                 return RoutineResults(status=False, err_reason="Falha na validação da política: " + validation.err_reason)
 
@@ -250,7 +250,7 @@ class FlowManager:
 
     def remove(self, policy: Policy) -> Success | Error:
         try:
-            validation = self.__validate(policy)
+            validation = self._validate(policy)
             if validation.status == False:
                 return RoutineResults(status=False, err_reason="Falha na validação da política: " + validation.err_reason)
 
@@ -270,23 +270,23 @@ class FlowManager:
 
 class Managers:
     def __init__(self):
-        self.__virtual_network = VirtualNetworkManager()
-        self.__flow = FlowManager()
-        self.__is_network_alive = False
+        self._virtual_network = VirtualNetworkManager()
+        self._flow = FlowManager()
+        self._is_network_alive = False
 
     @property
     def virtual_network(self) -> VirtualNetworkManager:
-        return self.__virtual_network
+        return self._virtual_network
 
     @property
     def flow(self) -> FlowManager:
-        return self.__flow
+        return self._flow
 
     @property
     def is_network_alive(self) -> bool:
-        return self.__is_network_alive
+        return self._is_network_alive
 
     @is_network_alive.setter
     def is_network_alive(self, network_status: bool) -> None:
-        self.__is_network_alive = network_status
+        self._is_network_alive = network_status
 
