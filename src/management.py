@@ -1,4 +1,5 @@
 from mininet.clean import Cleanup
+from mininet.cli import CLI
 from typing import List
 import yaml
 
@@ -35,6 +36,9 @@ class VirtualNetworkManager:
 
         return operation_result
 
+    def test(self):
+        CLI(self._net)
+
     def report_state(self) -> None:
         pass
 
@@ -54,8 +58,8 @@ class FlowManager:
         if not isinstance(policy.traffic_type, PolicyTypes):
             return Error.InvalidPolicyTrafficType
         
-        if not (policy.bandwidth < self._MIN_BANDWIDTH
-                and policy.bandwidth > self._MAX_BANDWIDTH):
+        if policy.bandwidth < self._MIN_BANDWIDTH \
+            or policy.bandwidth > self._MAX_BANDWIDTH:
             return Error.InvalidPolicyBandwidth
 
         return Success.OperationOk
@@ -173,10 +177,11 @@ class FlowManager:
         if isinstance(validation_result, Error):
             return validation_result
         
-        self._policies.append(policy)
-
         tables_update_result = self._update_tables(policy=policy,
                                                    operation="create")
+
+        self._policies.append(policy)
+
         if isinstance(tables_update_result, Error):
             self._policies.remove(policy)
             return tables_update_result

@@ -7,7 +7,7 @@ from src.data import Warning, Error
 app = Flask(__name__)
 managers = Managers()
 
-@app.route("/start", method="POST")
+@app.route("/start", methods=["POST"])
 def start() -> Response:
     if managers.is_network_alive:
         return Response(response=Warning.NetworkAlreadyUp, status=409)
@@ -18,7 +18,7 @@ def start() -> Response:
     if isinstance(generation_result, Error):
         status = 500
 
-    return Response(response=generation_result, status=status)
+    return Response(response=generation_result.value, status=status)
 
 @app.route("/destroy")
 def destroy() -> Response:
