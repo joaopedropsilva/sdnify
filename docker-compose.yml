@@ -15,6 +15,8 @@ services:
      - ./tests/:/root/app/tests/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
+    ports:
+      - 5000:5000
   faucet:
     restart: always
     image: faucet/faucet:1.10.11
