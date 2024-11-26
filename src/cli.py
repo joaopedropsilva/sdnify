@@ -4,17 +4,17 @@ import requests
 
 # Padronizar output em STDOUT
 class Actions:
-    __API_URL = "http://127.0.0.1:5000"
+    _API_URL = "http://127.0.0.1:5000"
 
     @classmethod
     def create_network(cls) -> None:
-        response = requests.post(f"{cls.__API_URL}/start")
+        response = requests.post(f"{cls._API_URL}/start")
 
         print(f"STATUS: {response.status_code} - {response.text}")
 
     @classmethod
     def destroy_network(cls) -> None:
-        response = requests.get(f"{cls.__API_URL}/destroy")
+        response = requests.get(f"{cls._API_URL}/destroy")
 
         print(f"STATUS: {response.status_code} - {response.text}")
 
@@ -22,29 +22,27 @@ class Actions:
     def create_policy(cls, name: str, protocol: str, bandwidth: float) -> None:
         # Remove name
         policy = {"name": name, "protocol": protocol, "bandwidth": bandwidth}
-        response = requests.post(f"{cls.__API_URL}/manage_policy", json=policy)
+        response = requests.post(f"{cls._API_URL}/manage_policy", json=policy)
 
         print(f"STATUS: {response.status_code} - {response.text}")
-
 
     @classmethod
     def update_policy(cls, name: str, protocol: str, bandwidth: float) -> None:
         policy = {"name": name, "protocol": protocol, "bandwidth": bandwidth}
-        response = requests.put(f"{cls.__API_URL}/manage_policy", json=policy)
+        response = requests.put(f"{cls._API_URL}/manage_policy", json=policy)
 
         print(f"STATUS: {response.status_code} - {response.text}")
-
 
     @classmethod
     def remove_policy(cls, protocol: str) -> None:
         policy = {"protocol": protocol}
-        response = requests.delete(f"{cls.__API_URL}/manage_policy", json=policy)
+        response = requests.delete(f"{cls._API_URL}/manage_policy", json=policy)
         
         print(f"STATUS: {response.status_code} - {response.text}")
 
     @classmethod
     def show_network_state(cls) -> None:
-        response = requests.get(f"{cls.__API_URL}/get_statistics")
+        response = requests.get(f"{cls._API_URL}/get_statistics")
 
         print(f"STATUS: {response.status_code} - {response.text}")
 
@@ -54,7 +52,7 @@ class Actions:
 
 class Dispatcher:
     @staticmethod
-    def __create_arg_parser() -> ArgumentParser:
+    def _create_arg_parser() -> ArgumentParser:
         parser = ArgumentParser(description="Gerenciador de Redes SDN")
         parser.add_argument(
             "action",
@@ -85,7 +83,7 @@ class Dispatcher:
     
     @classmethod
     def dispatch(cls):
-        parser = cls.__create_arg_parser()
+        parser = cls._create_arg_parser()
 
         args = parser.parse_args()
         action_map = {
