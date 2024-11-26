@@ -36,7 +36,7 @@ class VirtualNetworkManager:
 
         return operation_result
 
-    def test(self):
+    def invoke_cli(self):
         CLI(self._net)
 
     def report_state(self) -> None:
@@ -51,10 +51,6 @@ class FlowManager:
         self._policies: List[Policy] = []
 
     def _validate(self, policy: Policy) -> Success | Error:
-        # Remover
-        if policy.name == "":
-            return Error.InvalidPolicyTrafficType
-        
         if not isinstance(policy.traffic_type, PolicyTypes):
             return Error.InvalidPolicyTrafficType
         
@@ -67,7 +63,10 @@ class FlowManager:
     def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
         if operation == "create":
             if any(p.traffic_type == policy.traffic_type for p in self._policies):
-                return Error.PolicyAlreadyExists
+                old_policy = [p for p in self._policies 
+                                if p.traffic_type == policy.traffic_type][0]
+                self._policies.remove(old_policy)
+                self._rules[f"{policy.traffic_type}-traffic"] = []
             
             rule = self._create_rule(policy=policy)
 
@@ -78,29 +77,14 @@ class FlowManager:
 
             self._write_config()
 
+            self._policies.append(policy)
+
             return Success.PolicyCreationOk
-
-        elif operation == "update":
-            for existing_policy in self._policies:
-                if existing_policy.traffic_type == policy.traffic_type:
-                    # Só modifica a banda se ela for diferente da atual
-                    if existing_policy.bandwidth != policy.bandwidth:
-                        existing_policy.bandwidth = policy.bandwidth
-                        rule = self._create_rule(policy)
-                        # Atualiza a configuração
-                        self._rules[f"{policy.traffic_type}-traffic"] = [rule]
-                        self._write_config()
-                        return Success.PolicyUpdateOk
-                    else:
-                        return Error.BandwidthAlreadyCorrect
-
-            return Error.PolicyNotFound
-
         elif operation == "delete":
             policy_exists = any(p.traffic_type == policy.traffic_type for p in self._policies)
 
             if not policy_exists:
-                return Error.PolicyNotFoundForDeletion
+                return Error.PolicyNotFound
 
             self._policies = [p for p in self._policies if p.traffic_type != policy.traffic_type]
 
@@ -112,7 +96,6 @@ class FlowManager:
             return Success.PolicyDeletionOk
         else:
             return Error.UnknownOperation
-        
 
     def _create_rule(self, policy: Policy) -> dict:
         """
@@ -177,22 +160,12 @@ class FlowManager:
         if isinstance(validation_result, Error):
             return validation_result
         
-        tables_update_result = self._update_tables(policy=policy,
-                                                   operation="create")
-
-        self._policies.append(policy)
-
-        if isinstance(tables_update_result, Error):
-            self._policies.remove(policy)
-            return tables_update_result
-        
-        return Success.PolicyCreationOk
-
-    def update(self, policy: Policy) -> Success | Error:
-        return Success.OperationOk
+        return self._update_tables(policy=policy,
+                                   operation="create")
 
     def remove(self, policy: Policy) -> Success | Error:
-        return Success.OperationOk
+        return self._update_tables(policy=policy,
+                                   operation="remove")
 
 class Managers:
     def __init__(self):
