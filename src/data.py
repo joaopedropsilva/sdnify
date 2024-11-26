@@ -41,6 +41,7 @@ class Error(Enum):
     PolicyNotFoundForDeletion = "Política de tráfego não encontrada para remoção."
     UnknownOperation = "Operação desconhecida. Use 'create', 'update' ou 'delete'."
     InvalidBandwidthValue = "A banda reservada deve ser um valor entre 1 e 100."
+    ConfigWriteFailure = "Falha ao escrever o arquivo de configuração."
 
 class CustomTopo(Topo):
     def build(self, topo_schema: dict) -> None:
