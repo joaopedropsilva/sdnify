@@ -26,7 +26,7 @@ class PolicyTests:
         if isinstance(creation_result, Error):
             return
 
-        cls.managers.virtual_network.test()
+        cls.managers.virtual_network.invoke_cli()
 
 if __name__ == "__main__":
     PolicyTests.test_http_policy()

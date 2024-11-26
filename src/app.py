@@ -37,7 +37,7 @@ def destroy() -> Response:
 def get_statistics() -> Response:
     return "ok"
 
-@app.route("/manage_policy", methods=["POST", "PUT", "DELETE"])
+@app.route("/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
     try:
         policy = request.json
@@ -51,17 +51,21 @@ def manage_policy() -> Response:
                 status = 400
 
             return Response(response=creation_result, status=status)
-        elif method == "PUT":
-            update_result = managers.flow.update(policy)
         elif method == "DELETE":
             removal_result = managers.flow.remove(policy)
+
+            status = 200
+            if isinstance(removal_result, Error):
+                status = 400
+
+            return Response(response=removal_result, status=status)
         else:
             return Response(response="Método HTTP inválido.", status=405)
     except Exception:
         return Response(status=500)
     
 @app.route("/capture_alerts", methods=["POST"])
-def capture_alerts(policy_data: dict) -> Response:
+def capture_alerts() -> Response:
     try:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
