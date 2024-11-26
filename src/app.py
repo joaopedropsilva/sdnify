@@ -1,4 +1,5 @@
 from flask import Flask, Response, request
+import json
 
 from src.management import Managers
 from src.data import Warning, Error
@@ -69,7 +70,7 @@ def capture_alerts(policy_data: dict) -> Response:
 
         if isinstance(result, Error): 
             return Response(
-                response=json.dumps({"error": result.err_reason}),
+                response=json.dumps({"error": "Internal server error"}),
                 status=500,
                 mimetype="application/json",
             )

@@ -1,6 +1,6 @@
 {
-    "faucet_config_path": "/etc/faucet/faucet.yml",
+    "faucet_config_path": "/etc/faucet/faucet.yaml",
     "prometheus_config_path": "/etc/prometheus/prometheus.yml",
-    "acls_path": "",
+    "acls_path": "/etc/faucet/acls.yaml",
     "topo_schema_path": "./topo.example.json"
 }
