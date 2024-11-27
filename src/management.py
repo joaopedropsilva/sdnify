@@ -45,6 +45,7 @@ class FlowManager:
     def __init__(self):
         self.__config: dict = {}
         self.__policies: List[Policy] = []
+        self.__meters: dict = {}
 
     def __validate(self, policy: Policy) -> Success | Error:
         # Remover
@@ -64,13 +65,13 @@ class FlowManager:
         # inicializa o arquivo de config do controlador
         return False
 
-    def __update_tables(self, policy: Policy, operation: str) -> Success | Error:
+    def update_tables(self, policy: Policy, operation: str) -> Success | Error:
         # altera o arquivo de config do controlador para lidar
         # com uma nova política ou com redirecionamento de tráfego
 
         if operation == "create":
             # Verifica se a política já existe, e caso exista, retorna aborta a operacao
-            if any(p.traffic_type == policy.traffic_type for p in self.policies):
+            if any(p.traffic_type == policy.traffic_type for p in self.__policies):
                 return Error.PolicyAlreadyExists
             
             #A partir daqui admite-se que a politica ainda nao existe e que ela apresenta
@@ -80,7 +81,7 @@ class FlowManager:
             rule = self.__create_rule(policy)
 
             # adiciona a nova política na lista de politicas
-            self.policies.append(policy)
+            self.__policies.append(policy)
 
             # confirma que o tipo da politica nao existe no dicionario de configuracao
             # e cria uma entranda com uma lista vazia que depois recebe a regra,
@@ -115,21 +116,20 @@ class FlowManager:
 
         elif operation == "delete":
             # Verifica se a política existe na lista de políticas
-            policy_exists = any(p.traffic_type == policy.traffic_type for p in self.policies)
+            if not any(p.traffic_type == policy.traffic_type for p in self.__policies):
+                    return Error.PolicyNotFoundForDeletion
 
-            if not policy_exists:
-                return Error.PolicyNotFoundForDeletion
-
-            # Remove a política da lista de políticas
-            self.policies = [p for p in self.policies if p.traffic_type != policy.traffic_type]
-
-            # Verifica e remove a política do dicionário de configuração, se existir
+            # Remove a política da lista e dicionário de políticas junto ao limite de banda se existir 
+            self.__policies = [p for p in self.__policies if p.traffic_type != policy.traffic_type]
             if f"{policy.traffic_type}-traffic" in self.__config:
                 del self.__config[f"{policy.traffic_type}-traffic"]
 
+            meter_name = f"qos_meter_{policy.name.lower()}"
+            if meter_name in self.__meters:
+                del self.__meters[meter_name]
+
             # Atualiza o arquivo acls.yaml com a configuração modificada
             self.__write_config()
-
             return Success.PolicyDeletionOk
 
         else:
@@ -140,19 +140,13 @@ class FlowManager:
         """
         Cria a regra de tráfego baseada na política.
         """
-        # Define a banda total disponível (exemplo: 1000 Mbps)
-        total_bandwidth = 1000  # Exemplo de valor fixo. Isso pode vir de uma configuração ou ser dinâmico
 
-        # Validação da banda reservada entre 1% e 100%
-        if not (1 <= policy.bandwidth_reserved <= 100):
-            return Error.InvalidBandwidthValue
-
-        # Calcula a banda reservada em Mbps e converte para bps
-        reserved_bandwidth = (policy.bandwidth_reserved / 100) * total_bandwidth * 1000000
+        meter_name, meter_config = self._create_meter(policy)
+        self.__meters[meter_name] = meter_config
 
         # Criação de regra genérica com base no tipo de tráfego
         rule = {
-            "acl_name": policy.name,  # Nome da política (como acl_name no formato do Faucet)
+            "acl_name": policy.traffic_type,  # Nome da política (como acl_name no formato do Faucet)
             "rules": [
                 {
                     "dl_type": "0x800",  # Endereços IPv4 (exemplo genérico)
@@ -161,49 +155,85 @@ class FlowManager:
                     "tcp_dst": 80 if policy.traffic_type != PolicyTypes.VOIP else None,  # Porta padrão para HTTP/FTP
                     "actions": {
                         "allow": 1,  # Permitir
-                        "set_fields": [
-                            {"bandwidth_reserved": reserved_bandwidth},  # Percentual tratado da banda reservada em bps
-                        ]
+                        "meter": meter_name  # Associa o meter dinâmico
                     }
                 }
             ]
         }
-
-
         return rule
+    
 
+    def _create_meter(self, policy: Policy) -> dict:
+        """
+        Cria a configuração de um meter com base na política.
+        """
+
+        # Calcula a banda reservada em Mbps e converte para bps
+        reserved_bandwidth = (policy.bandwidth / 100) * self._MAX_BANDWIDTH * 1000000 # Percentual tratado da banda reservada em bps
+
+        meter_name = f"qos_meter_{policy.name.lower()}"
+
+        meter_config = {
+            "name": meter_name,
+            "rates": [{"rate": reserved_bandwidth, "unit": "bits_per_second"}]
+        }
+        return meter_name, meter_config
+
+    def generate_faucet_config(self):
+        """
+        Gera a configuração completa de ACLs e Meters no formato do Faucet.
+        """
+        acls = []
+        meters = {}
+        
+        for policy in self.__policies:
+            # Create meter
+            meter_name, meter_config = self._create_meter(policy)
+            meters[meter_name] = meter_config
+            
+            # Create ACL rule
+            acl_rule = self.__create_rule(policy)
+            
+            # Append the ACL rule
+            acls.append({
+                "acl_name": policy.name,
+                "rules": acl_rule["rules"]
+            })
+        
+        return {
+            "acls": acls,
+            "meters": meters
+        }
 
     def __write_config(self):
         
         """
-        Atualiza o arquivo acls.yaml com o conteúdo de self.__config,
+        Atualiza o arquivo faucet.yaml com o conteúdo de self.__config,
         mantendo as entradas já existentes.
-        Retorna um objeto Error ou Success com o status da operação.
         """
-
         try:
-            # Primeiro, carrega o conteúdo atual do arquivo acls.yaml
+            faucet_config = self.generate_faucet_config()
+            
             try:
-                with open("acls.yaml", "r") as file:
+                with open("faucet.yaml", "r") as file:
                     existing_config = yaml.safe_load(file) or {}
             except FileNotFoundError:
-                # Se o arquivo não for encontrado, inicializa um dicionário vazio
                 existing_config = {}
-
-            # Atualiza o dicionário de configuração com as entradas existentes
-            existing_config.update(self.__config)
-
-            # Escreve o dicionário atualizado no arquivo acls.yaml
-            with open("acls.yaml", "w") as file:
+            
+            faucet_yaml_config = {
+                "acls": faucet_config.get("acls", []),
+                "meters": faucet_config.get("meters", {})
+            }
+            
+            existing_config.update(faucet_yaml_config)
+            
+            with open("faucet.yaml", "w") as file:
                 yaml.dump(existing_config, file, default_flow_style=False)
-
-            # Retorna um sucesso com a mensagem
+            
             return Success.ConfigWriteOk
-
+        
         except Exception as e:
-            # Retorna erro com a mensagem de exceção
             return Error.ConfigWriteFailure
-
 
     def __process_alerts(self) -> RoutineResults:
         # recebe o alerta do monitor
