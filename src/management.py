@@ -64,14 +64,14 @@ class FlowManager:
     def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
         if operation == "create":
             if f"{policy.traffic_type}-traffic" not in self._policy_rules:
-                self._policy_rules[f"{policy.traffic_type}-traffic"] = []
+                self._policy_rules[f"{policy.traffic_type.value}-traffic"] = []
 
-            self._policy_rules[f"{policy.traffic_type}-traffic"] \
+            self._policy_rules[f"{policy.traffic_type.value}-traffic"] \
                 .append(self._create_rule(policy=policy))
 
-            self._write_config()
-
             self._policies.append(policy)
+
+            self._write_config()
 
             return Success.PolicyCreationOk
         elif operation == "delete":
@@ -81,10 +81,10 @@ class FlowManager:
 
             self._policies = [p for p in self._policies
                                if p.traffic_type != policy.traffic_type]
-            if f"{policy.traffic_type}-traffic" in self._policy_rules:
-                del self._policy_rules[f"{policy.traffic_type}-traffic"]
+            if f"{policy.traffic_type.value}-traffic" in self._policy_rules:
+                del self._policy_rules[f"{policy.traffic_type.value}-traffic"]
 
-            meter_name = f"qos_meter_{policy.traffic_type}"
+            meter_name = f"qos_meter_{policy.traffic_type.value}"
             if meter_name in self._meters:
                 del self._meters[meter_name]
 
@@ -102,7 +102,7 @@ class FlowManager:
         self._meters[meter_name] = meter_config
 
         return {
-            "acl_name": policy.traffic_type,
+            "acl_name": policy.traffic_type.value,
             "rules": [
                 {
                     "dl_type": "0x800",
@@ -125,7 +125,7 @@ class FlowManager:
         """
         bandwidth = (policy.bandwidth / 100) * self._MAX_BANDWIDTH * 1000000
 
-        meter_name = f"qos_meter_{policy.traffic_type}"
+        meter_name = f"qos_meter_{policy.traffic_type.value}"
 
         meter_config = {
             "name": meter_name,
@@ -142,16 +142,13 @@ class FlowManager:
         meters = {}
         
         for policy in self._policies:
-            # Create meter
             meter_name, meter_config = self._create_meter(policy)
             meters[meter_name] = meter_config
             
-            # Create ACL rule
             acl_rule = self._create_rule(policy)
             
-            # Append the ACL rule
             acls.append({
-                "acl_name": policy.traffic_type,
+                "acl_name": policy.traffic_type.value,
                 "rules": acl_rule["rules"]
             })
         
@@ -165,29 +162,61 @@ class FlowManager:
         Atualiza o arquivo faucet.yaml com o conteúdo de self._policy_rules,
         mantendo as entradas já existentes.
         """
+        faucet_yml_file = File.get_config()["faucet_config_path"]
+        existing_config = {}
+
         try:
-            existing_config = {}
-            faucet_config = self._generate_faucet_config()
-            
             try:
-                with open("faucet.yaml", "r") as file:
+                with open(faucet_yml_file, "r") as file:
                     existing_config = yaml.safe_load(file) or {}
             except FileNotFoundError:
-                pass
+                existing_config = {}
             
-            faucet_yaml_config = {
-                "acls": faucet_config.get("acls", []),
-                "meters": faucet_config.get("meters", {})
+            new_faucet_config = self._generate_faucet_config()
+            
+            # Remover ACLs obsoletas (não estão na nova configuração)
+            existing_config["acls"] = [
+                acl for acl in existing_config.get("acls", [])
+                if acl.get("acl_name") in [new_acl.get("acl_name") for new_acl in new_faucet_config.get("acls", [])]
+            ]
+
+            # Remover meters obsoletos (não estão sendo mais referenciados)
+            referenced_meters = {
+                rule.get("actions", {}).get("meter")
+                for acl in new_faucet_config.get("acls", [])
+                for rule in acl.get("rules", [])
+                if rule.get("actions", {}).get("meter")
             }
+
+            existing_config["meters"] = {
+                name: config
+                for name, config in existing_config.get("meters", {}).items()
+                if name in referenced_meters
+            }
+
+            # Atualizar a configuração com os novos meters e ACLs
+            # Atualiza os Meters
+            existing_config["meters"].update(new_faucet_config.get("meters", {}))
+
+            # Atualiza as ACLs
+            if "acls" not in existing_config:
+                existing_config["acls"] = []
             
-            existing_config.update(faucet_yaml_config)
-            
-            with open("faucet.yaml", "w") as file:
+            # Remover regras existentes para o mesmo nome de ACL
+            existing_config["acls"] = [
+                acl for acl in existing_config["acls"]
+                if acl.get('acl_name') not in [new_acl.get('acl_name') for new_acl in new_faucet_config.get('acls', [])]
+            ]
+
+            # Adiciona as novas ACLs
+            existing_config["acls"].extend(new_faucet_config.get("acls", []))
+
+            with open(faucet_yml_file, "w") as file:
                 yaml.dump(existing_config, file, default_flow_style=False)
             
             return Success.ConfigWriteOk
-        
         except Exception:
+            # Log the error or handle it appropriately
             return Error.ConfigWriteFailure
 
     def _process_alerts(self) -> bool:

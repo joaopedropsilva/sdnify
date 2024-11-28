@@ -5,12 +5,6 @@ class PolicyTests:
     managers = Managers()
 
     @classmethod
-    def _create_http_test_policy_with(cls, bandwidth: int) -> Policy:
-        return Policy(name="id",
-                      traffic_type=PolicyTypes.HTTP,
-                      bandwidth=bandwidth)
-
-    @classmethod
     def test_http_policy(cls):
         build_result = cls.managers.virtual_network.generate()
 
@@ -19,14 +13,15 @@ class PolicyTests:
         if isinstance(build_result, Error):
             return
 
-        policy = cls._create_http_test_policy_with(bandwidth=30)
+        policy = Policy(traffic_type=PolicyTypes.HTTP,
+                        bandwidth=30)
         creation_result = cls.managers.flow.create(policy=policy)
 
         print(creation_result.value)
         if isinstance(creation_result, Error):
             return
 
-        cls.managers.virtual_network.invoke_cli()
+        #cls.managers.virtual_network.invoke_cli()
 
 if __name__ == "__main__":
     PolicyTests.test_http_policy()
