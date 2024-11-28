@@ -11,8 +11,7 @@ services:
      - DISPLAY
     volumes:
      - ./dependencies/mininet/.bashrc:/root/.bashrc
-     - ./src/:/root/app/src/
-     - ./tests/:/root/app/tests/
+     - ./:/root/app/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
     ports:

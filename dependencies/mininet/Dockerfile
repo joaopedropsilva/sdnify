@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 USER root
 WORKDIR /root/app
 
-COPY . .
+COPY ./dependencies/mininet/ENTRYPOINT.sh /root
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -20,9 +20,9 @@ RUN apt-get update \
     vim \
     python3.10-venv \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf ./.venv \
-    && chmod +x ./dependencies/mininet/ENTRYPOINT.sh
+    && chmod +x /root/ENTRYPOINT.sh
 
 EXPOSE 6633 6653 6640
 
-ENTRYPOINT ["./dependencies/mininet/ENTRYPOINT.sh"]
+ENTRYPOINT ["/root/ENTRYPOINT.sh"]
+

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DEPENDENCIES_DIR=$(dirname "$(dirname "$(realpath "$0")")")
+DEPENDENCIES_DIR="/root/app/dependencies"
 
 service openvswitch-switch start
 ovs-vsctl set-manager ptcp:6640
