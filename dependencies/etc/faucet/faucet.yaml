@@ -7,6 +7,14 @@ acls:
       actions:
         allow: 1
         meter: qos_meter_voip
+  ftp:
+    - rule:
+      dl_type: 0x800
+      nw_proto: 6
+      tcp_dst: 21
+      actions:
+        allow: 1
+        meter: qos_meter_ftp
   http:
     - rule:
       dl_type: 0x800
@@ -28,12 +36,10 @@ dps:
         description: host1 container
         name: h1
         native_vlan: test
-        acls_in: [voip, http, allow-all]
       2:
         description: host2 container
         name: h2
         native_vlan: test
-        acls_in: [voip, http, allow-all]
 meters:
   qos_meter_http:
     meter_id: 1
@@ -41,15 +47,23 @@ meters:
       flags: KBPS
       bands:
         - type: DROP
-          rate: 30000
-  qos_meter_voip:
+          rate: 10000
+  qos_meter_ftp:
     meter_id: 2
     entry:
       flags: KBPS
       bands:
         - type: DROP
           rate: 20000
+  qos_meter_voip:
+    meter_id: 3
+    entry:
+      flags: KBPS
+      bands:
+        - type: DROP
+          rate: 70000
 vlans:
   test:
     description: vlan test
     vid: 100
+    acls_in: [voip, ftp, http, allow-all]
