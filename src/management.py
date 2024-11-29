@@ -1,5 +1,5 @@
 from mininet.clean import Cleanup
-from mininet.cli import CLI
+from mininet.net import Mininet
 from typing import List
 import yaml
 
@@ -12,6 +12,10 @@ class VirtualNetworkManager:
         topo_schema_path = File.get_config()["topo_schema_path"]
         self._builder = NetworkBuilder(topo_schema_path=topo_schema_path)
         self._net = None
+
+    @property
+    def net(self) -> Mininet | None:
+        return self._net
 
     def generate(self) -> Success | Error:
         (build_result, net) = self._builder.build_network()
@@ -35,9 +39,6 @@ class VirtualNetworkManager:
         Cleanup()
 
         return operation_result
-
-    def invoke_cli(self) -> None:
-        CLI(self._net)
 
     def report_state(self) -> None:
         pass
