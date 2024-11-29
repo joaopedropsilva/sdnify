@@ -71,9 +71,9 @@ class FlowManager:
 
             self._policies.append(policy)
 
-            self._write_config()
-
-            return Success.PolicyCreationOk
+            write_result = self._write_config()
+            if isinstance(write_result, Success):
+                return Success.PolicyCreationOk
         elif operation == "delete":
             if not any(p.traffic_type == policy.traffic_type
                        for p in self._policies):
@@ -88,9 +88,9 @@ class FlowManager:
             if meter_name in self._meters:
                 del self._meters[meter_name]
 
-            self._write_config()
-
-            return Success.PolicyDeletionOk
+            write_result = self._write_config()
+            if isinstance(write_result, Success):
+                return Success.PolicyDeletionOk
         else:
             return Error.UnknownOperation
 
@@ -168,7 +168,7 @@ class FlowManager:
         try:
             try:
                 with open(faucet_yml_file, "r") as file:
-                    existing_config = yaml.safe_load(file) or {}
+                    existing_config = yaml.safe_load(file)
             except FileNotFoundError:
                 existing_config = {}
             
@@ -216,7 +216,6 @@ class FlowManager:
             
             return Success.ConfigWriteOk
         except Exception:
-            # Log the error or handle it appropriately
             return Error.ConfigWriteFailure
 
     def _process_alerts(self) -> bool:

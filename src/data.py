@@ -6,8 +6,8 @@ from enum import Enum
 from src.utils import File
 
 class PolicyTypes(Enum):
-    VOIP = "voip",
-    HTTP = "http",
+    VOIP = "voip"
+    HTTP = "http"
     FTP = "ftp"
 
 class Warning(Enum):

@@ -1,19 +1,55 @@
----
-vlans:
-    test:
-        vid: 100
-        description: "vlan test"
-
+acls:
+  voip:
+    - rule:
+      dl_type: 0x800
+      nw_proto: 17
+      udp_dst: 5001
+      actions:
+        allow: 1
+        meter: qos_meter_voip
+  http:
+    - rule:
+      dl_type: 0x800
+      nw_proto: 6
+      tcp_dst: 80
+      actions:
+        allow: 1
+        meter: qos_meter_http
+  allow-all:
+    - rule:
+      actions:
+        allow: 1
 dps:
-    sw1:
-        dp_id: 0x1
-        hardware: "Open vSwitch"
-        interfaces:
-            1:
-                name: "h1"
-                description: "host1 container"
-                native_vlan: test
-            2:
-                name: "h2"
-                description: "host2 container"
-                native_vlan: test
+  sw1:
+    dp_id: 1
+    hardware: Open vSwitch
+    interfaces:
+      1:
+        description: host1 container
+        name: h1
+        native_vlan: test
+        acls_in: [voip, http, allow-all]
+      2:
+        description: host2 container
+        name: h2
+        native_vlan: test
+        acls_in: [voip, http, allow-all]
+meters:
+  qos_meter_http:
+    meter_id: 1
+    entry:
+      flags: KBPS
+      bands:
+        - type: DROP
+          rate: 30000
+  qos_meter_voip:
+    meter_id: 2
+    entry:
+      flags: KBPS
+      bands:
+        - type: DROP
+          rate: 20000
+vlans:
+  test:
+    description: vlan test
+    vid: 100
