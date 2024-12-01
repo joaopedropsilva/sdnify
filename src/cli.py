@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
-import requests
+from subprocess import run
+#import requests
 
 
 # Padronizar output em STDOUT
@@ -42,10 +43,24 @@ class Actions:
     def show_manual() -> None:
         pass
 
+    @staticmethod
+    def run_tests(interactive: bool, test_file: str) -> None:
+        script = []
+
+        if interactive:
+            script = ["python", "-m", "tests.interactive"]
+
+        if test_file is not None:
+            script = ["python", "-m", f"tests.{test_file}"]
+
+        # Ctrl + C ainda para esse processo
+        run(script)
+
+
 class Dispatcher:
     @staticmethod
     def _create_arg_parser() -> ArgumentParser:
-        parser = ArgumentParser(description="Gerenciador de Redes SDN")
+        parser = ArgumentParser(description="SDNify: Gerenciador de Redes SDN")
         parser.add_argument(
             "action",
             type=str,
@@ -54,16 +69,29 @@ class Dispatcher:
                      "create_policy",
                      "remove_policy",
                      "show_network_state",
-                     "show_manual"],
+                     "show_manual",
+                     "test"],
             help="Escolha a ação a ser executada"
         )
 
-        parser.add_argument("--traffic_type",
+        parser.add_argument("--traffic-type",
                             type=str,
-                            help="Protocolo da política (ex: HTTP, FTP e RTP)")
+                            help="Tipo de tráfego alvo da política \
+                                (ex: HTTP, FTP e VOiP)")
+
         parser.add_argument("--bandwidth",
                             type=float,
                             help="Largura de banda para a política")
+
+        parser.add_argument("--interactive",
+                            "-i",
+                            action="store_true",
+                            help="Executar testes no modo interativo")
+
+        parser.add_argument("--file",
+                            "-f",
+                            type=str,
+                            help="Nome do arquivo de testes a executar")
         return parser
     
     @classmethod
@@ -78,7 +106,9 @@ class Dispatcher:
                                                            args.bandwidth),
             "remove_policy": lambda: Actions.remove_policy(args.traffic_type),
             "show_network_state": Actions.show_network_state,
-            "show_manual": Actions.show_manual
+            "show_manual": Actions.show_manual,
+            "test": lambda: Actions.run_tests(args.interactive,
+                                                   args.file)
         }
 
         if args.action in action_map:
