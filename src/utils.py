@@ -2,9 +2,25 @@ from pathlib import Path
 from json import load
 
 
+class Display:
+    def __init__(self, prefix: str):
+        self._prefix = prefix
+
+    def _get_decorator(self) -> str:
+        return "\n" + f"{80 * '='}" + "\n"
+
+    def title(self, content: str) -> None:
+        print(f"{self._get_decorator()}" \
+              f"\t{content.upper()}" \
+              f"{self._get_decorator()}")
+
+    def command(self, content: str) -> None:
+        print(f"[{self._prefix}] {content}")
+
+
 class File:
     @staticmethod
-    def get_project_path():
+    def get_project_path() -> Path:
         src_path = Path(__file__).parent.resolve()
         return Path(src_path).parent.resolve()
 
@@ -41,6 +57,7 @@ class File:
         return config \
                 if config_path.exists() \
                 else config_example
+
 
 class Manual:
     @staticmethod

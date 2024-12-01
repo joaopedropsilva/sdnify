@@ -19,6 +19,8 @@ RUN apt-get update \
     tcpdump \
     vim \
     python3.10-venv \
+    x11-xserver-utils \
+    xterm \
     && rm -rf /var/lib/apt/lists/* \
     && chmod +x /root/ENTRYPOINT.sh
 
