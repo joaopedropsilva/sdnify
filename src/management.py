@@ -61,162 +61,164 @@ class FlowManager:
 
         return Success.OperationOk
 
-    def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
+    def update_tables(self, policy: Policy, operation: str) -> Success | Error:
+   
         if operation == "create":
-            if f"{policy.traffic_type}-traffic" not in self._policy_rules:
-                self._policy_rules[f"{policy.traffic_type.value}-traffic"] = []
+            
+            if f"{policy.traffic_type.value}" not in self.__config:
+                
+                rule = self.generate_faucet_config()
+                self.__policies.append(policy)
+                self.__config[f"{policy.traffic_type.value}"] = []
+                
+                self.__config[f"{policy.traffic_type.value}"].append(rule["acls"])
 
-            self._policy_rules[f"{policy.traffic_type.value}-traffic"] \
-                .append(self._create_rule(policy=policy))
+                self.__write_config(policy=policy)
+            else:
+                self.__write_config(policy=policy)
 
-            self._policies.append(policy)
+            return Success.PolicyCreationOk
+        
+        elif operation == "remove":
 
-            write_result = self._write_config()
-            if isinstance(write_result, Success):
-                return Success.PolicyCreationOk
-        elif operation == "delete":
-            if not any(p.traffic_type == policy.traffic_type
-                       for p in self._policies):
-                    return Error.PolicyNotFound
-
-            self._policies = [p for p in self._policies
-                               if p.traffic_type != policy.traffic_type]
-            if f"{policy.traffic_type.value}-traffic" in self._policy_rules:
-                del self._policy_rules[f"{policy.traffic_type.value}-traffic"]
-
-            meter_name = f"qos_meter_{policy.traffic_type.value}"
-            if meter_name in self._meters:
-                del self._meters[meter_name]
-
-            write_result = self._write_config()
-            if isinstance(write_result, Success):
-                return Success.PolicyDeletionOk
+            self.__policies = [p for p in self.__policies if p.traffic_type != policy.traffic_type]
+            
+            self._delete_config(policy=policy)
+            
+            return Success.PolicyDeletionOk
+            
         else:
             return Error.UnknownOperation
 
-    def _create_rule(self, policy: Policy) -> dict:
-        """
-        Cria a regra de tráfego baseada na política.
-        """
-        meter_name, meter_config = self._create_meter(policy)
-        self._meters[meter_name] = meter_config
 
-        return {
-            "acl_name": policy.traffic_type.value,
-            "rules": [
-                {
-                    "dl_type": "0x800",
-                    "nw_proto": 17 if policy.traffic_type == PolicyTypes.VOIP else 6,
-                    "udp_dst": 20000 if policy.traffic_type == PolicyTypes.VOIP else None,
-                    "tcp_dst": 80 if policy.traffic_type == PolicyTypes.HTTP \
-                                  else 21 if policy.traffic_type == PolicyTypes.FTP \
-                                  else None,
-                    "actions": {
-                        "allow": 1,
-                        "meter": meter_name
-                    }
-                }
-            ]
-        }
-
-    def _create_meter(self, policy: Policy) -> tuple[str, dict]:
-        """
-        Cria a configuração de um meter com base na política.
-        """
-        bandwidth = (policy.bandwidth / 100) * self._MAX_BANDWIDTH * 1000000
-
-        meter_name = f"qos_meter_{policy.traffic_type.value}"
-
-        meter_config = {
-            "name": meter_name,
-            "rates": [{"rate": bandwidth, "unit": "bits_per_second"}]
-        }
-
-        return meter_name, meter_config
-
-    def _generate_faucet_config(self):
+    def generate_faucet_config(self):
         """
         Gera a configuração completa de ACLs e Meters no formato do Faucet.
         """
-        acls = []
+        acls = {}
         meters = {}
-        
-        for policy in self._policies:
-            meter_name, meter_config = self._create_meter(policy)
+
+        for policy in self.__policies:
+            reserved_bandwidth = policy.bandwidth * 1000
+
+            meter_name = f"qos_meter_{policy.traffic_type.value}"
+            meter_config = {
+                "meter_id": len(meters) + 1, 
+                "entry": {
+                    "flags": "KBPS",
+                    "bands": [{"type": "DROP", "rate": reserved_bandwidth}],
+                },
+            }
+
+            rule = {
+                "rule":{
+                "dl_type": '0x800',
+                "nw_proto": 17 if policy.traffic_type == PolicyTypes.VOIP else 6,
+                **({"udp_dst": 5001} if policy.traffic_type == PolicyTypes.VOIP else {}),
+                **({"tcp_dst": 80} if policy.traffic_type != PolicyTypes.VOIP else {}),
+                **({"tcp_dst": 21} if policy.traffic_type == PolicyTypes.FTP else {}),
+                "actions": {"allow": 1, "meter": meter_name},
+                }
+                
+            }
+            
             meters[meter_name] = meter_config
             
-            acl_rule = self._create_rule(policy)
-            
-            acls.append({
-                "acl_name": policy.traffic_type.value,
-                "rules": acl_rule["rules"]
-            })
-        
-        return {
-            "acls": acls,
-            "meters": meters
-        }
+            acl_name = policy.traffic_type.value
+            if acl_name not in acls:
+                acls[acl_name] = []
+           
+            acls[acl_name].append(rule)
 
-    def _write_config(self):
-        """
-        Atualiza o arquivo faucet.yaml com o conteúdo de self._policy_rules,
-        mantendo as entradas já existentes.
-        """
-        faucet_yml_file = File.get_config()["faucet_config_path"]
-        existing_config = {}
+        return {"acls": acls, "meters": meters}
 
+    def __write_config(self, policy: Policy):
+       
         try:
+            
             try:
-                with open(faucet_yml_file, "r") as file:
-                    existing_config = yaml.safe_load(file)
+                with open("dependencias/etc/faucet.yaml", "r") as file:
+                    existing_config = yaml.safe_load(file) or {}
             except FileNotFoundError:
                 existing_config = {}
-            
-            new_faucet_config = self._generate_faucet_config()
-            
-            # Remover ACLs obsoletas (não estão na nova configuração)
-            existing_config["acls"] = [
-                acl for acl in existing_config.get("acls", [])
-                if acl.get("acl_name") in [new_acl.get("acl_name") for new_acl in new_faucet_config.get("acls", [])]
-            ]
 
-            # Remover meters obsoletos (não estão sendo mais referenciados)
-            referenced_meters = {
-                rule.get("actions", {}).get("meter")
-                for acl in new_faucet_config.get("acls", [])
-                for rule in acl.get("rules", [])
-                if rule.get("actions", {}).get("meter")
+            if f"{policy.traffic_type.value}" in existing_config["acls"]:
+                new_bandwidth = policy.bandwidth * 1000
+                existing_config["meters"][f"qos_meter_{policy.traffic_type.value}"]["entry"]["bands"][0]["rate"] = new_bandwidth
+
+                with open("dependencias/etc/faucet.yaml", "w") as file:
+                    yaml.dump(existing_config, file, sort_keys=False, default_flow_style=False)
+
+            new_faucet_config = self.generate_faucet_config()
+
+            existing_config["acls"] = {
+                **existing_config.get("acls", {}),
+                **new_faucet_config["acls"],
             }
 
             existing_config["meters"] = {
-                name: config
-                for name, config in existing_config.get("meters", {}).items()
-                if name in referenced_meters
+                **existing_config.get("meters", {}),
+                **new_faucet_config["meters"],
             }
 
-            # Atualizar a configuração com os novos meters e ACLs
-            # Atualiza os Meters
-            existing_config["meters"].update(new_faucet_config.get("meters", {}))
+            acl_names = list(existing_config["acls"].keys())
+            acl_names.reverse()
 
-            # Atualiza as ACLs
-            if "acls" not in existing_config:
-                existing_config["acls"] = []
-            
-            # Remover regras existentes para o mesmo nome de ACL
-            existing_config["acls"] = [
-                acl for acl in existing_config["acls"]
-                if acl.get('acl_name') not in [new_acl.get('acl_name') for new_acl in new_faucet_config.get('acls', [])]
-            ]
+            existing_config["vlans"]["test"]["acls_in"] = acl_names
+            existing_config_wt_vlans = existing_config.copy()
+            del existing_config_wt_vlans["vlans"]
 
-            # Adiciona as novas ACLs
-            existing_config["acls"].extend(new_faucet_config.get("acls", []))
+            with open("dependencias/etc/faucet.yaml", "w") as file:
+                file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
+                file.write("vlans:\n")
+                file.write("  test:\n")
+                file.write(f"    description: {existing_config['vlans']['test']['description']}\n")
+                file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
+                file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
 
-            with open(faucet_yml_file, "w") as file:
-                yaml.dump(existing_config, file, default_flow_style=False)
-            
             return Success.ConfigWriteOk
-        except Exception:
+
+        except Exception as e:
+            
             return Error.ConfigWriteFailure
+        
+        
+    def _delete_config(self, policy: Policy):
+
+        acl = f"{policy.traffic_type.value}"
+        qos_meter = f"qos_meter_{policy.traffic_type.value}"
+
+        try:
+            with open("dependencias/etc/faucet.yaml", "r") as file:
+                existing_config = yaml.safe_load(file) or {}
+        except FileNotFoundError:
+                existing_config = {}
+        
+        del existing_config["acls"][acl]
+        del existing_config["meters"][qos_meter]
+
+        acl_names = list(existing_config["acls"].keys())
+        acl_names.reverse()
+
+        existing_config["vlans"]["test"]["acls_in"] = acl_names
+        existing_config_wt_vlans = existing_config.copy()
+        del existing_config_wt_vlans["vlans"]
+        
+            
+        with open("dependencias/etc/faucet.yaml", "w") as file:
+            
+            file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
+            file.write("vlans:\n")
+            file.write("  test:\n")
+            file.write(f"    description: {existing_config['vlans']['test']['description']}\n")
+            file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
+            file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
+        
+        
+        self.__config = {
+            "acls": existing_config.get("acls", {}),
+            "meters": existing_config.get("meters", {})
+        }
 
     def _process_alerts(self) -> bool:
         return False
@@ -228,13 +230,16 @@ class FlowManager:
         validation_result = self._validate(policy)
         if isinstance(validation_result, Error):
             return validation_result
-        
-        return self._update_tables(policy=policy,
-                                   operation="create")
+
+        return self.update_tables(policy=policy, 
+                                       operation="create")
 
     def remove(self, policy: Policy) -> Success | Error:
-        return self._update_tables(policy=policy,
-                                   operation="remove")
+        if not any(p.traffic_type == policy.traffic_type for p in self.__policies):
+            return Error.PolicyNotFound  
+        
+        return self.update_tables(policy=policy,
+                                operation="remove")
 
 class Managers:
     def __init__(self):
