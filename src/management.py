@@ -1,7 +1,9 @@
 from mininet.clean import Cleanup
 from mininet.net import Mininet
 from typing import List
+from pathlib import Path
 import yaml
+
 
 from src.utils import File
 from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
@@ -49,8 +51,7 @@ class FlowManager:
     
     def __init__(self):
         self._policies: List[Policy] = []
-        self._policy_rules: dict = {}
-        self._meters: dict = {}
+        self._config: dict = {}
 
     def _validate(self, policy: Policy) -> Success | Error:
         if not isinstance(policy.traffic_type, PolicyTypes):
@@ -62,27 +63,29 @@ class FlowManager:
 
         return Success.OperationOk
 
-    def update_tables(self, policy: Policy, operation: str) -> Success | Error:
+    def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
    
         if operation == "create":
             
-            if f"{policy.traffic_type.value}" not in self.__config:
+            if f"{policy.traffic_type.value}" not in self._config:
                 
-                rule = self.generate_faucet_config()
-                self.__policies.append(policy)
-                self.__config[f"{policy.traffic_type.value}"] = []
-                
-                self.__config[f"{policy.traffic_type.value}"].append(rule["acls"])
+                self._policies.append(policy)
 
-                self.__write_config(policy=policy)
+                rule = self._generate_faucet_config()
+
+                self._config[f"{policy.traffic_type.value}"] = []
+                
+                self._config[f"{policy.traffic_type.value}"].append(rule["acls"])
+
+                self._write_config(policy=policy)
             else:
-                self.__write_config(policy=policy)
+                self._write_config(policy=policy)
 
             return Success.PolicyCreationOk
         
         elif operation == "remove":
 
-            self.__policies = [p for p in self.__policies if p.traffic_type != policy.traffic_type]
+            self._policies = [p for p in self._policies if p.traffic_type != policy.traffic_type]
             
             self._delete_config(policy=policy)
             
@@ -92,14 +95,14 @@ class FlowManager:
             return Error.UnknownOperation
 
 
-    def generate_faucet_config(self):
+    def _generate_faucet_config(self):
         """
         Gera a configuração completa de ACLs e Meters no formato do Faucet.
         """
         acls = {}
         meters = {}
 
-        for policy in self.__policies:
+        for policy in self._policies:
             reserved_bandwidth = policy.bandwidth * 1000
 
             meter_name = f"qos_meter_{policy.traffic_type.value}"
@@ -133,12 +136,13 @@ class FlowManager:
 
         return {"acls": acls, "meters": meters}
 
-    def __write_config(self, policy: Policy):
-       
+    def _write_config(self, policy: Policy):
+        faucet_path = Path(File.get_project_path(),
+                           "dependencies/etc/faucet/faucet.yaml")
+
         try:
-            
             try:
-                with open("dependencias/etc/faucet.yaml", "r") as file:
+                with open(faucet_path, "r") as file:
                     existing_config = yaml.safe_load(file) or {}
             except FileNotFoundError:
                 existing_config = {}
@@ -147,10 +151,10 @@ class FlowManager:
                 new_bandwidth = policy.bandwidth * 1000
                 existing_config["meters"][f"qos_meter_{policy.traffic_type.value}"]["entry"]["bands"][0]["rate"] = new_bandwidth
 
-                with open("dependencias/etc/faucet.yaml", "w") as file:
+                with open(faucet_path, "w") as file:
                     yaml.dump(existing_config, file, sort_keys=False, default_flow_style=False)
 
-            new_faucet_config = self.generate_faucet_config()
+            new_faucet_config = self._generate_faucet_config()
 
             existing_config["acls"] = {
                 **existing_config.get("acls", {}),
@@ -169,7 +173,7 @@ class FlowManager:
             existing_config_wt_vlans = existing_config.copy()
             del existing_config_wt_vlans["vlans"]
 
-            with open("dependencias/etc/faucet.yaml", "w") as file:
+            with open(faucet_path, "w") as file:
                 file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
                 file.write("vlans:\n")
                 file.write("  test:\n")
@@ -179,18 +183,20 @@ class FlowManager:
 
             return Success.ConfigWriteOk
 
-        except Exception as e:
+        except Exception:
             
             return Error.ConfigWriteFailure
         
         
     def _delete_config(self, policy: Policy):
+        faucet_path = Path(File.get_project_path(),
+                           "dependencies/etc/faucet/faucet.yaml")
 
         acl = f"{policy.traffic_type.value}"
         qos_meter = f"qos_meter_{policy.traffic_type.value}"
 
         try:
-            with open("dependencias/etc/faucet.yaml", "r") as file:
+            with open(faucet_path, "r") as file:
                 existing_config = yaml.safe_load(file) or {}
         except FileNotFoundError:
                 existing_config = {}
@@ -206,7 +212,7 @@ class FlowManager:
         del existing_config_wt_vlans["vlans"]
         
             
-        with open("dependencias/etc/faucet.yaml", "w") as file:
+        with open(faucet_path, "w") as file:
             
             file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
             file.write("vlans:\n")
@@ -216,13 +222,13 @@ class FlowManager:
             file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
         
         
-        self.__config = {
+        self._config = {
             "acls": existing_config.get("acls", {}),
             "meters": existing_config.get("meters", {})
         }
 
-    def _process_alerts(self) -> bool:
-        return False
+    def _process_alerts(self) -> Success | Error:
+        return Success.OperationOk
 
     def redirect_traffic(self) -> Success | Error:
         return Success.OperationOk
@@ -232,14 +238,14 @@ class FlowManager:
         if isinstance(validation_result, Error):
             return validation_result
 
-        return self.update_tables(policy=policy, 
+        return self._update_tables(policy=policy, 
                                        operation="create")
 
     def remove(self, policy: Policy) -> Success | Error:
-        if not any(p.traffic_type == policy.traffic_type for p in self.__policies):
+        if not any(p.traffic_type == policy.traffic_type for p in self._policies):
             return Error.PolicyNotFound  
         
-        return self.update_tables(policy=policy,
+        return self._update_tables(policy=policy,
                                 operation="remove")
 
 class Managers:

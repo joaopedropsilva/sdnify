@@ -1,6 +1,8 @@
+from mininet.node import Host
+
 from src.management import Managers
 from src.data import Error, Policy, PolicyTypes
-from src.utils import Display
+from src.utils import Display, File
 
 
 class CommandGenerator:
@@ -10,7 +12,7 @@ class CommandGenerator:
                  host_ip: str,
                  bandwidth: str):
         self._port = port
-        self._transport = "" if transport == "tcp" else "-u"
+        self._transport = "" if transport == "tcp" else " -u"
         self._host_ip = host_ip
         self._bandwidth = bandwidth
 
@@ -37,38 +39,11 @@ class PolicyTests:
         self._net = None
         self._display = Display(prefix="tests")
 
-    def start_network_and_management(self) -> None:
-        if self._managers is None:
-            self._managers = Managers()
+    def _issue_commands(self,
+                        command_gen: CommandGenerator,
+                        hosts: tuple[Host, Host]) -> None:
+        (h1, h2) = hosts
 
-            build_result = self._managers.virtual_network.generate()
-
-            if isinstance(build_result, Error):
-                raise Exception(build_result.value)
-
-        if self._net is None:
-            self._net = self._managers.virtual_network.net
-
-    def create_test_policies(self) -> None:
-        pass
-
-    def simulate_http_traffic(self) -> None:
-        self._display.title("Simulando tráfego http")
-        pass
-
-    def simulate_ftp_traffic(self) -> None:
-        self._display.title("Simulando tráfego ftp")
-
-        if self._net is None:
-            return
-
-        h1, h2 = self._net.get("h1", "h2")
-
-        command_gen = CommandGenerator(port=21,
-                                       transport="tcp",
-                                       host_ip=h1.IP(),
-                                       bandwidth="100m")
-        
         host_cmd = command_gen.generate(command="iperf_as_host")
         self._display.command(host_cmd)
         h1.cmd(host_cmd)
@@ -83,8 +58,89 @@ class PolicyTests:
         self._display.command(kill_iperf)
         h1.cmd(kill_iperf)
 
+    def start_network_and_management(self) -> None:
+        if self._managers is None:
+            self._managers = Managers()
+
+            build_result = self._managers.virtual_network.generate()
+
+            if isinstance(build_result, Error):
+                raise Exception(build_result.value)
+
+        if self._net is None:
+            self._net = self._managers.virtual_network.net
+
+    def create_test_policies(self) -> None:
+        self._display.title("Criando políticas de classificação de pacote")
+
+        self._managers = Managers()
+
+        policies = [
+            Policy(traffic_type=PolicyTypes.HTTP, bandwidth=10),
+            Policy(traffic_type=PolicyTypes.FTP, bandwidth=20),
+            Policy(traffic_type=PolicyTypes.VOIP, bandwidth=70)
+        ]
+
+        for p in policies:
+            self._display.message(f"Criando política para {p.traffic_type.value}")
+            creation_result = self._managers.flow.create(policy=p)
+
+            if isinstance(creation_result, Error):
+                raise Exception(creation_result.value)
+
+        File.update_config({"policies_created": True})
+
+        self._display.message(f"Políticas criadas com sucesso, reinicie o " \
+                              f"serviço do controlador para aplicá-las")
+        exit(0)
+
+    def simulate_http_traffic(self) -> None:
+        self._display.title("Simulando tráfego http")
+
+        if self._net is None:
+            return
+
+        h1, h2 = self._net.get("h1", "h2")
+
+        command_gen = CommandGenerator(port=80,
+                                       transport="tcp",
+                                       host_ip=h1.IP(),
+                                       bandwidth="100m")
+
+        self._issue_commands(command_gen=command_gen,
+                             hosts=(h1, h2))
+
+    def simulate_ftp_traffic(self) -> None:
+        self._display.title("Simulando tráfego ftp")
+
+        if self._net is None:
+            return
+
+        h1, h2 = self._net.get("h1", "h2")
+
+        command_gen = CommandGenerator(port=21,
+                                       transport="tcp",
+                                       host_ip=h1.IP(),
+                                       bandwidth="100m")
+
+        self._issue_commands(command_gen=command_gen,
+                             hosts=(h1, h2))
+
     def simulate_voip_traffic(self) -> None:
         self._display.title("Simulando tráfego voip")
+
+        if self._net is None:
+            return
+
+        h1, h2 = self._net.get("h1", "h2")
+
+        command_gen = CommandGenerator(port=20000,
+                                       transport="udp",
+                                       host_ip=h1.IP(),
+                                       bandwidth="100m")
+
+        self._issue_commands(command_gen=command_gen,
+                             hosts=(h1, h2))
 
     def stop_network(self) -> None:
         if self._net is None:
@@ -96,9 +152,12 @@ class PolicyTests:
 if __name__ == "__main__":
     tests = PolicyTests()
 
-    tests.start_network_and_management()
-    tests.create_test_policies()
+    policies_exist = File.get_config()["policies_created"]
 
+    if not policies_exist: 
+        tests.create_test_policies()
+
+    tests.start_network_and_management()
     tests.simulate_http_traffic()
     tests.simulate_ftp_traffic()
     tests.simulate_voip_traffic()

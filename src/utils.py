@@ -1,5 +1,5 @@
 from pathlib import Path
-from json import load
+from json import load, dump
 
 
 class Display:
@@ -15,6 +15,9 @@ class Display:
               f"{self._get_decorator()}")
 
     def command(self, content: str) -> None:
+        print(f"[{self._prefix}:command] {content}")
+
+    def message(self, content: str) -> None:
         print(f"[{self._prefix}] {content}")
 
 
@@ -57,6 +60,27 @@ class File:
         return config \
                 if config_path.exists() \
                 else config_example
+
+    @classmethod
+    def update_config(cls, new_values: dict) -> None:
+        config = cls.get_config()
+        config.update(new_values)
+
+        config_path = Path(
+            cls.get_project_path(),
+            "config.json"
+        )
+
+        config_example_path = Path(
+            cls.get_project_path(),
+            "config.example.json"
+        )
+
+        path = config_path if config_path.exists() else config_example_path
+
+        with open(path, "w") as file:
+            dump(config, file, indent=4)
+            
 
 
 class Manual:
