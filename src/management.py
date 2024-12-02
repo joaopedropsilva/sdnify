@@ -46,6 +46,7 @@ class VirtualNetworkManager:
         pass
 
 class FlowManager:
+    # mover MAX parar o arquivo de config
     _MIN_BANDWIDTH = 1
     _MAX_BANDWIDTH = 100
     
