@@ -134,7 +134,7 @@ class PolicyTests:
 
         h1, h2 = self._net.get("h1", "h2")
 
-        command_gen = CommandGenerator(port=20000,
+        command_gen = CommandGenerator(port=5001,
                                        transport="udp",
                                        host_ip=h1.IP(),
                                        bandwidth="100m")
