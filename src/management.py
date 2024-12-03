@@ -267,6 +267,8 @@ class Managers:
     def is_network_alive(self) -> bool:
         return self._is_network_alive
 
+    # Remover isso, não é responsabilidade de serviços de fora
+    # dizer se a rede está viva ou não
     @is_network_alive.setter
     def is_network_alive(self, network_status: bool) -> None:
         self._is_network_alive = network_status

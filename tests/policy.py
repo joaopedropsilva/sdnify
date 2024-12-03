@@ -53,6 +53,7 @@ class PolicyTests:
         with h2.popen(client_cmd) as process:
             for line in process.stdout:
                 print(line.strip())
+        print("")
 
         kill_iperf = "kill %iperf"
         self._display.command(kill_iperf)
@@ -62,13 +63,26 @@ class PolicyTests:
         if self._managers is None:
             self._managers = Managers()
 
+        if not self._managers.is_network_alive:
             build_result = self._managers.virtual_network.generate()
 
             if isinstance(build_result, Error):
                 raise Exception(build_result.value)
 
+            self._managers.is_network_alive = True
+
         if self._net is None:
             self._net = self._managers.virtual_network.net
+
+    def stop_network(self) -> None:
+        if self._managers is None:
+            return
+
+        destruction_result = self._managers.virtual_network.destroy()
+        self._managers.is_network_alive = False
+
+        if isinstance(destruction_result, Error):
+            raise Exception(destruction_result.value)
 
     def create_test_policies(self) -> None:
         self._display.title("Criando políticas de classificação de pacote")
@@ -97,10 +111,11 @@ class PolicyTests:
 
         self._display.message(f"Políticas criadas com sucesso, execute o " \
                               f"script novamente para executar os testes")
-        exit(0)
 
-    def simulate_http_traffic(self) -> None:
-        self._display.title("Simulando tráfego http")
+    def simulate_http_traffic(self, qos: bool = False) -> None:
+        title = f"Simulando tráfego http " \
+                f"{'(sem políticas de classificação)' if not qos else ''}"
+        self._display.title(title)
 
         if self._net is None:
             return
@@ -115,8 +130,10 @@ class PolicyTests:
         self._issue_commands(command_gen=command_gen,
                              hosts=(h1, h2))
 
-    def simulate_ftp_traffic(self) -> None:
-        self._display.title("Simulando tráfego ftp")
+    def simulate_ftp_traffic(self, qos: bool = False) -> None:
+        title = f"Simulando tráfego ftp " \
+                f"{'(sem políticas de classificação)' if not qos else ''}"
+        self._display.title(title)
 
         if self._net is None:
             return
@@ -131,8 +148,10 @@ class PolicyTests:
         self._issue_commands(command_gen=command_gen,
                              hosts=(h1, h2))
 
-    def simulate_voip_traffic(self) -> None:
-        self._display.title("Simulando tráfego voip")
+    def simulate_voip_traffic(self, qos: bool = False) -> None:
+        title = f"Simulando tráfego voip " \
+                f"{'(sem políticas de classificação)' if not qos else ''}"
+        self._display.title(title)
 
         if self._net is None:
             return
@@ -147,25 +166,20 @@ class PolicyTests:
         self._issue_commands(command_gen=command_gen,
                              hosts=(h1, h2))
 
-    def stop_network(self) -> None:
-        if self._net is None:
-            return
-
-        self._net.stop()
-
 
 if __name__ == "__main__":
     tests = PolicyTests()
 
     policies_exist = File.get_config()["policies_created"]
 
-    if not policies_exist: 
-        tests.create_test_policies()
-
     tests.start_network_and_management()
-    tests.simulate_http_traffic()
-    tests.simulate_ftp_traffic()
-    tests.simulate_voip_traffic()
+
+    tests.simulate_http_traffic(qos=policies_exist)
+    tests.simulate_ftp_traffic(qos=policies_exist)
+    tests.simulate_voip_traffic(qos=policies_exist)
 
     tests.stop_network()
+
+    if not policies_exist:
+        tests.create_test_policies()
 
