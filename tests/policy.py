@@ -89,10 +89,12 @@ class PolicyTests:
 
         self._managers = Managers()
 
+        bandwidths = File.get_config()["bandwidths"]
+
         types_and_bandwidths = [
-            (PolicyTypes.HTTP, 30),
-            (PolicyTypes.FTP, 10),
-            (PolicyTypes.VOIP, 60)
+            (PolicyTypes.HTTP, bandwidths["http"]),
+            (PolicyTypes.FTP, bandwidths["ftp"]),
+            (PolicyTypes.VOIP, bandwidths["voip"])
          ]
 
         for t, b in types_and_bandwidths:
@@ -107,7 +109,7 @@ class PolicyTests:
             if isinstance(creation_result, Error):
                 raise Exception(creation_result.value)
 
-        File.update_config({"policies_created": True})
+        File.update_config({"limit_bandwidth": True})
 
         self._display.message(f"Políticas criadas com sucesso, execute o " \
                               f"script novamente para executar os testes")
@@ -170,16 +172,16 @@ class PolicyTests:
 if __name__ == "__main__":
     tests = PolicyTests()
 
-    policies_exist = File.get_config()["policies_created"]
+    bandwidth_limit_exist = File.get_config()["limit_bandwidth"]
 
     tests.start_network_and_management()
 
-    tests.simulate_http_traffic(qos=policies_exist)
-    tests.simulate_ftp_traffic(qos=policies_exist)
-    tests.simulate_voip_traffic(qos=policies_exist)
+    tests.simulate_http_traffic(qos=bandwidth_limit_exist)
+    tests.simulate_ftp_traffic(qos=bandwidth_limit_exist)
+    tests.simulate_voip_traffic(qos=bandwidth_limit_exist)
 
     tests.stop_network()
 
-    if not policies_exist:
+    if not bandwidth_limit_exist:
         tests.create_test_policies()
 
