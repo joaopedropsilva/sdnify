@@ -1,19 +1,23 @@
----
-vlans:
-    test:
-        vid: 100
-        description: "vlan test"
-
+acls:
+  allow-all:
+  - rule:
+      actions:
+        allow: 1
 dps:
-    sw1:
-        dp_id: 0x1
-        hardware: "Open vSwitch"
-        interfaces:
-            1:
-                name: "h1"
-                description: "host1 container"
-                native_vlan: test
-            2:
-                name: "h2"
-                description: "host2 container"
-                native_vlan: test
+  sw1:
+    dp_id: 1
+    hardware: Open vSwitch
+    interfaces:
+      1:
+        description: host1 container
+        name: h1
+        native_vlan: test
+      2:
+        description: host2 container
+        name: h2
+        native_vlan: test
+vlans:
+  test:
+    description: vlan test
+    vid: 100
+    acls_in: [allow-all]

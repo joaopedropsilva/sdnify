@@ -1,4 +1,5 @@
 from flask import Flask, Response, request
+import json
 
 from src.management import Managers
 from src.data import Warning, Error
@@ -6,7 +7,7 @@ from src.data import Warning, Error
 app = Flask(__name__)
 managers = Managers()
 
-@app.route("/start", method="POST")
+@app.route("/start", methods=["POST"])
 def start() -> Response:
     if managers.is_network_alive:
         return Response(response=Warning.NetworkAlreadyUp, status=409)
@@ -17,7 +18,7 @@ def start() -> Response:
     if isinstance(generation_result, Error):
         status = 500
 
-    return Response(response=generation_result, status=status)
+    return Response(response=generation_result.value, status=status)
 
 @app.route("/destroy")
 def destroy() -> Response:
@@ -36,7 +37,7 @@ def destroy() -> Response:
 def get_statistics() -> Response:
     return "ok"
 
-@app.route("/manage_policy", methods=["POST", "PUT", "DELETE"])
+@app.route("/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
     try:
         policy = request.json
@@ -50,26 +51,30 @@ def manage_policy() -> Response:
                 status = 400
 
             return Response(response=creation_result, status=status)
-        elif method == "PUT":
-            update_result = managers.flow.update(policy)
         elif method == "DELETE":
             removal_result = managers.flow.remove(policy)
+
+            status = 200
+            if isinstance(removal_result, Error):
+                status = 400
+
+            return Response(response=removal_result, status=status)
         else:
             return Response(response="Método HTTP inválido.", status=405)
     except Exception:
         return Response(status=500)
     
 @app.route("/capture_alerts", methods=["POST"])
-def capture_alerts(policy_data: dict) -> Response:
+def capture_alerts() -> Response:
     try:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
         
-        result = managers.__flow.process_alerts(alerts)
+        result = managers.flow.process_alerts(alerts)
 
         if isinstance(result, Error): 
             return Response(
-                response=json.dumps({"error": result.err_reason}),
+                response=json.dumps({"error": "Internal server error"}),
                 status=500,
                 mimetype="application/json",
             )
@@ -88,5 +93,5 @@ def capture_alerts(policy_data: dict) -> Response:
         )
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host:="0.0.0.0", port=5000)
 

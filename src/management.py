@@ -1,6 +1,9 @@
 from mininet.clean import Cleanup
+from mininet.net import Mininet
 from typing import List
+from pathlib import Path
 import yaml
+
 
 from src.utils import File
 from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
@@ -9,25 +12,29 @@ from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
 class VirtualNetworkManager:
     def __init__(self):
         topo_schema_path = File.get_config()["topo_schema_path"]
-        self.__builder = NetworkBuilder(topo_schema_path=topo_schema_path)
-        self.__net = None
+        self._builder = NetworkBuilder(topo_schema_path=topo_schema_path)
+        self._net = None
+
+    @property
+    def net(self) -> Mininet | None:
+        return self._net
 
     def generate(self) -> Success | Error:
-        (build_result, net) = self.__builder.build_network()
+        (build_result, net) = self._builder.build_network()
 
         if isinstance(build_result, Success):
             if net is not None:
-                self.__net = net
-                self.__net.start()
+                self._net = net
+                self._net.start()
 
         return build_result
 
     def destroy(self) -> Success | Error:
         operation_result = Success.NetworkDestructionOk
 
-        if self.__net is not None:
+        if self._net is not None:
             try:
-                self.__net.stop()
+                self._net.stop()
             except Exception:
                 operation_result = Error.NetworkDestructionFailed
 
@@ -39,254 +46,230 @@ class VirtualNetworkManager:
         pass
 
 class FlowManager:
-    __MIN_BANDWIDTH_RESERVED = 1
-    __MAX_BANDWIDTH_RESERVED = 100
+    # mover MAX parar o arquivo de config
+    _MIN_BANDWIDTH = 1
+    _MAX_BANDWIDTH = 100
     
     def __init__(self):
-        self.__config: dict = {}
-        self.__policies: List[Policy] = []
+        self._policies: List[Policy] = []
+        self._config: dict = {}
 
-    def __validate(self, policy: Policy) -> Success | Error:
-        # Remover
-        if policy.name == "":
-            return Error.InvalidPolicyTrafficType
-        
+    def _validate(self, policy: Policy) -> Success | Error:
         if not isinstance(policy.traffic_type, PolicyTypes):
             return Error.InvalidPolicyTrafficType
         
-        if not (policy.bandwidth < self.__MIN_BANDWIDTH_RESERVED
-                and policy.bandwidth > self.__MAX_BANDWIDTH_RESERVED):
+        if policy.bandwidth < self._MIN_BANDWIDTH \
+            or policy.bandwidth > self._MAX_BANDWIDTH:
             return Error.InvalidPolicyBandwidth
 
         return Success.OperationOk
 
-    def __init_framework_config(self) -> bool:
-        # inicializa o arquivo de config do controlador
-        return False
-
-    def __update_tables(self, policy: Policy, operation: str) -> Success | Error:
-        # altera o arquivo de config do controlador para lidar
-        # com uma nova política ou com redirecionamento de tráfego
-
+    def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
+   
         if operation == "create":
-            # Verifica se a política já existe, e caso exista, retorna aborta a operacao
-            if any(p.traffic_type == policy.traffic_type for p in self.policies):
-                return Error.PolicyAlreadyExists
             
-            #A partir daqui admite-se que a politica ainda nao existe e que ela apresenta
-            #todos os parametros necessarios para a criacao de uma nova regra.
+            if f"{policy.traffic_type.value}" not in self._config:
+                
+                self._policies.append(policy)
 
-            # cria a estrutura de regra com base na política
-            rule = self.__create_rule(policy)
+                rule = self._generate_faucet_config()
 
-            # adiciona a nova política na lista de politicas
-            self.policies.append(policy)
+                self._config[f"{policy.traffic_type.value}"] = []
+                
+                self._config[f"{policy.traffic_type.value}"].append(rule["acls"])
 
-            # confirma que o tipo da politica nao existe no dicionario de configuracao
-            # e cria uma entranda com uma lista vazia que depois recebe a regra,
-            #  necessario antes de reescrever o arquivo acls.yaml do faucet
-            if f"{policy.traffic_type}-traffic" not in self.__config:
-                self.__config[f"{policy.traffic_type}-traffic"] = []
-
-            self.__config[f"{policy.traffic_type}-traffic"].append(rule)
-
-            # faz a escrita no arquivo acls.yaml e retorna a mensagem confirmando 
-            self.__write_config()
+                self._write_config(policy=policy)
+            else:
+                self._write_config(policy=policy)
 
             return Success.PolicyCreationOk
+        
+        elif operation == "remove":
 
-        elif operation == "update":
-            for existing_policy in self.policies:
-                if existing_policy.traffic_type == policy.traffic_type:
-                    # Só modifica a banda se ela for diferente da atual
-                    if existing_policy.bandwidth_reserved != policy.bandwidth_reserved:
-                        existing_policy.bandwidth_reserved = policy.bandwidth_reserved
-                        rule = self.__create_rule(policy)
-                        # Atualiza a configuração
-                        self.__config[f"{policy.traffic_type}-traffic"] = [rule]
-                        self.__write_config()
-                        return Success.PolicyUpdateOk
-                    else:
-                        # Se a banda não mudou, não faz nada
-                        return Error.BandwidthAlreadyCorrect
-
-            # caso a politica nao exista, retorna a negativa 
-            return Error.PolicyNotFound
-
-        elif operation == "delete":
-            # Verifica se a política existe na lista de políticas
-            policy_exists = any(p.traffic_type == policy.traffic_type for p in self.policies)
-
-            if not policy_exists:
-                return Error.PolicyNotFoundForDeletion
-
-            # Remove a política da lista de políticas
-            self.policies = [p for p in self.policies if p.traffic_type != policy.traffic_type]
-
-            # Verifica e remove a política do dicionário de configuração, se existir
-            if f"{policy.traffic_type}-traffic" in self.__config:
-                del self.__config[f"{policy.traffic_type}-traffic"]
-
-            # Atualiza o arquivo acls.yaml com a configuração modificada
-            self.__write_config()
-
+            self._policies = [p for p in self._policies if p.traffic_type != policy.traffic_type]
+            
+            self._delete_config(policy=policy)
+            
             return Success.PolicyDeletionOk
-
+            
         else:
             return Error.UnknownOperation
-        
 
-    def __create_rule(self, policy: Policy):
+
+    def _generate_faucet_config(self):
         """
-        Cria a regra de tráfego baseada na política.
+        Gera a configuração completa de ACLs e Meters no formato do Faucet.
         """
-        # Define a banda total disponível (exemplo: 1000 Mbps)
-        total_bandwidth = 1000  # Exemplo de valor fixo. Isso pode vir de uma configuração ou ser dinâmico
+        acls = {}
+        meters = {}
 
-        # Validação da banda reservada entre 1% e 100%
-        if not (1 <= policy.bandwidth_reserved <= 100):
-            return Error.InvalidBandwidthValue
+        for policy in self._policies:
+            reserved_bandwidth = policy.bandwidth * 1000
 
-        # Calcula a banda reservada em Mbps e converte para bps
-        reserved_bandwidth = (policy.bandwidth_reserved / 100) * total_bandwidth * 1000000
+            meter_name = f"qos_meter_{policy.traffic_type.value}"
+            meter_config = {
+                "meter_id": len(meters) + 1, 
+                "entry": {
+                    "flags": "KBPS",
+                    "bands": [{"type": "DROP", "rate": reserved_bandwidth}],
+                },
+            }
 
-        # Criação de regra genérica com base no tipo de tráfego
-        rule = {
-            "acl_name": policy.name,  # Nome da política (como acl_name no formato do Faucet)
-            "rules": [
-                {
-                    "dl_type": "0x800",  # Endereços IPv4 (exemplo genérico)
-                    "nw_proto": 17 if policy.traffic_type == PolicyTypes.VOIP else 6,  # UDP (VoIP) ou TCP (HTTP e FTP)
-                    "udp_dst": 53 if policy.traffic_type == PolicyTypes.VOIP else None,  # Porta padrão UDP para VoIP
-                    "tcp_dst": 80 if policy.traffic_type != PolicyTypes.VOIP else None,  # Porta padrão para HTTP/FTP
-                    "actions": {
-                        "allow": 1,  # Permitir
-                        "set_fields": [
-                            {"bandwidth_reserved": reserved_bandwidth},  # Percentual tratado da banda reservada em bps
-                        ]
-                    }
+            rule = {
+                "rule":{
+                "dl_type": '0x800',
+                "nw_proto": 17 if policy.traffic_type == PolicyTypes.VOIP else 6,
+                **({"udp_dst": 5001} if policy.traffic_type == PolicyTypes.VOIP else {}),
+                **({"tcp_dst": 80} if policy.traffic_type != PolicyTypes.VOIP else {}),
+                **({"tcp_dst": 21} if policy.traffic_type == PolicyTypes.FTP else {}),
+                "actions": {"allow": 1, "meter": meter_name},
                 }
-            ]
-        }
+                
+            }
+            
+            meters[meter_name] = meter_config
+            
+            acl_name = policy.traffic_type.value
+            if acl_name not in acls:
+                acls[acl_name] = []
+           
+            acls[acl_name].append(rule)
 
+        return {"acls": acls, "meters": meters}
 
-        return rule
-
-
-    def __write_config(self):
-        
-        """
-        Atualiza o arquivo acls.yaml com o conteúdo de self.__config,
-        mantendo as entradas já existentes.
-        Retorna um objeto Error ou Success com o status da operação.
-        """
+    def _write_config(self, policy: Policy):
+        faucet_path = Path(File.get_project_path(),
+                           "dependencies/etc/faucet/faucet.yaml")
 
         try:
-            # Primeiro, carrega o conteúdo atual do arquivo acls.yaml
             try:
-                with open("acls.yaml", "r") as file:
+                with open(faucet_path, "r") as file:
                     existing_config = yaml.safe_load(file) or {}
             except FileNotFoundError:
-                # Se o arquivo não for encontrado, inicializa um dicionário vazio
                 existing_config = {}
 
-            # Atualiza o dicionário de configuração com as entradas existentes
-            existing_config.update(self.__config)
+            if f"{policy.traffic_type.value}" in existing_config["acls"]:
+                new_bandwidth = policy.bandwidth * 1000
+                existing_config["meters"][f"qos_meter_{policy.traffic_type.value}"]["entry"]["bands"][0]["rate"] = new_bandwidth
 
-            # Escreve o dicionário atualizado no arquivo acls.yaml
-            with open("acls.yaml", "w") as file:
-                yaml.dump(existing_config, file, default_flow_style=False)
+                with open(faucet_path, "w") as file:
+                    yaml.dump(existing_config, file, sort_keys=False, default_flow_style=False)
 
-            # Retorna um sucesso com a mensagem
+            new_faucet_config = self._generate_faucet_config()
+
+            existing_config["acls"] = {
+                **existing_config.get("acls", {}),
+                **new_faucet_config["acls"],
+            }
+
+            existing_config["meters"] = {
+                **existing_config.get("meters", {}),
+                **new_faucet_config["meters"],
+            }
+
+            acl_names = list(existing_config["acls"].keys())
+            acl_names.reverse()
+
+            existing_config["vlans"]["test"]["acls_in"] = acl_names
+            existing_config_wt_vlans = existing_config.copy()
+            del existing_config_wt_vlans["vlans"]
+
+            with open(faucet_path, "w") as file:
+                file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
+                file.write("vlans:\n")
+                file.write("  test:\n")
+                file.write(f"    description: {existing_config['vlans']['test']['description']}\n")
+                file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
+                file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
+
             return Success.ConfigWriteOk
 
-        except Exception as e:
-            # Retorna erro com a mensagem de exceção
+        except Exception:
+            
             return Error.ConfigWriteFailure
+        
+        
+    def _delete_config(self, policy: Policy):
+        faucet_path = Path(File.get_project_path(),
+                           "dependencies/etc/faucet/faucet.yaml")
 
+        acl = f"{policy.traffic_type.value}"
+        qos_meter = f"qos_meter_{policy.traffic_type.value}"
 
-    def __process_alerts(self) -> RoutineResults:
-        # recebe o alerta do monitor
-        # chama redirect_traffic se necessário
-        return False
+        try:
+            with open(faucet_path, "r") as file:
+                existing_config = yaml.safe_load(file) or {}
+        except FileNotFoundError:
+                existing_config = {}
+        
+        del existing_config["acls"][acl]
+        del existing_config["meters"][qos_meter]
+
+        acl_names = list(existing_config["acls"].keys())
+        acl_names.reverse()
+
+        existing_config["vlans"]["test"]["acls_in"] = acl_names
+        existing_config_wt_vlans = existing_config.copy()
+        del existing_config_wt_vlans["vlans"]
+        
+            
+        with open(faucet_path, "w") as file:
+            
+            file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
+            file.write("vlans:\n")
+            file.write("  test:\n")
+            file.write(f"    description: {existing_config['vlans']['test']['description']}\n")
+            file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
+            file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
+        
+        
+        self._config = {
+            "acls": existing_config.get("acls", {}),
+            "meters": existing_config.get("meters", {})
+        }
+
+    def _process_alerts(self) -> Success | Error:
+        return Success.OperationOk
 
     def redirect_traffic(self) -> Success | Error:
         return Success.OperationOk
 
     def create(self, policy: Policy) -> Success | Error:
-        validation_result = self.__validate(policy)
+        validation_result = self._validate(policy)
         if isinstance(validation_result, Error):
             return validation_result
-        
-        self.__policies.append(policy)
 
-        tables_update_result = self.__update_tables()
-        if isinstance(tables_update_result, Error):
-            self.__policies.remove(policy)
-            return tables_update_result
-        
-        return Success.PolicyCreationOk
-
-    def update(self, policy: Policy) -> Success | Error:
-        try:
-            validation = self.__validate(policy)
-            if validation.status == False:
-                return RoutineResults(status=False, err_reason="Falha na validação da política: " + validation.err_reason)
-
-            existing_policy = next((p for p in self.policies if p.name == policy.name), None)
-            if not existing_policy:
-                return RoutineResults(status=False, err_reason="Política não encontrada.")
-            
-            existing_policy.traffic_type = policy.traffic_type
-            existing_policy.bandwidth_reserved = policy.bandwidth_reserved
-
-            return RoutineResults(status=True, payload="Política atualizada com sucesso.")
-        
-        except Exception as e:
-            return RoutineResults(status=False, err_reason="Falha ao atualizar política: str{e}")
-        
-        finally:
-            print("Operação de atualização de políticas finalizado.")
+        return self._update_tables(policy=policy, 
+                                       operation="create")
 
     def remove(self, policy: Policy) -> Success | Error:
-        try:
-            validation = self.__validate(policy)
-            if validation.status == False:
-                return RoutineResults(status=False, err_reason="Falha na validação da política: " + validation.err_reason)
-
-            existing_policy = next((p for p in self.policies if p.name == policy.name), None)
-            if not existing_policy:
-                return RoutineResults(status=False, err_reason="Política não encontrada.")
-            
-            self.policies.remove(existing_policy)
-
-            return RoutineResults(status=True, payload="Política removida com sucesso.")
+        if not any(p.traffic_type == policy.traffic_type for p in self._policies):
+            return Error.PolicyNotFound  
         
-        except Exception as e:
-            return RoutineResults(status=False, err_reason="Falha ao remover política: str{e}")
-        
-        finally:
-            print("Operação de remoção de políticas finalizado.")
+        return self._update_tables(policy=policy,
+                                operation="remove")
 
 class Managers:
     def __init__(self):
-        self.__virtual_network = VirtualNetworkManager()
-        self.__flow = FlowManager()
-        self.__is_network_alive = False
+        self._virtual_network = VirtualNetworkManager()
+        self._flow = FlowManager()
+        self._is_network_alive = False
 
     @property
     def virtual_network(self) -> VirtualNetworkManager:
-        return self.__virtual_network
+        return self._virtual_network
 
     @property
     def flow(self) -> FlowManager:
-        return self.__flow
+        return self._flow
 
     @property
     def is_network_alive(self) -> bool:
-        return self.__is_network_alive
+        return self._is_network_alive
 
+    # Remover isso, não é responsabilidade de serviços de fora
+    # dizer se a rede está viva ou não
     @is_network_alive.setter
     def is_network_alive(self, network_status: bool) -> None:
-        self.__is_network_alive = network_status
+        self._is_network_alive = network_status
 

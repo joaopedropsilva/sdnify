@@ -1,10 +1,29 @@
 from pathlib import Path
-from json import load
+from json import load, dump
+
+
+class Display:
+    def __init__(self, prefix: str):
+        self._prefix = prefix
+
+    def _get_decorator(self) -> str:
+        return "\n" + f"{120 * '='}" + "\n"
+
+    def title(self, content: str) -> None:
+        print(f"{self._get_decorator()}" \
+              f"\t{content.upper()}" \
+              f"{self._get_decorator()}")
+
+    def command(self, content: str) -> None:
+        print(f"[{self._prefix}:command] {content}\n")
+
+    def message(self, content: str) -> None:
+        print(f"[{self._prefix}:message] {content}\n")
 
 
 class File:
     @staticmethod
-    def get_project_path():
+    def get_project_path() -> Path:
         src_path = Path(__file__).parent.resolve()
         return Path(src_path).parent.resolve()
 
@@ -41,6 +60,28 @@ class File:
         return config \
                 if config_path.exists() \
                 else config_example
+
+    @classmethod
+    def update_config(cls, new_values: dict) -> None:
+        config = cls.get_config()
+        config.update(new_values)
+
+        config_path = Path(
+            cls.get_project_path(),
+            "config.json"
+        )
+
+        config_example_path = Path(
+            cls.get_project_path(),
+            "config.example.json"
+        )
+
+        path = config_path if config_path.exists() else config_example_path
+
+        with open(path, "w") as file:
+            dump(config, file, indent=4)
+            
+
 
 class Manual:
     @staticmethod

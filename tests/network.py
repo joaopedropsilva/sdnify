@@ -2,37 +2,40 @@ from mininet.util import dumpNodeConnections
 from mininet.net import Mininet
 
 from src.data import CustomTopo, NetworkBuilder, Error
-from src.utils import File
+from src.utils import Display, File
 
-class Network:
-    _simple_topo = {
-        "hosts": ["h1", "h2"],
-        "switches": [
-            {
-                "id": "sw1",
-                "links": ["h1", "h2"]
-            }
-        ]
-    }
 
-    @staticmethod
-    def _ping_all(net: Mininet) -> None:
-        net.start()
+class VirtualNetworkTests:
+    def __init__(self):
+        self._display = Display(prefix="tests")
 
-        dumpNodeConnections(net.hosts)
-        net.pingAll()
+    def builds_simple_topo_and_ping_all(self) -> None:
+        self._display.title(f"Simulando uma rede padrão e pingando em " \
+                            f"todos os hosts")
 
-        net.stop()
+        simple_topo = {
+            "hosts": ["h1", "h2"],
+            "switches": [
+                {
+                    "id": "sw1",
+                    "links": ["h1", "h2"]
+                }
+            ]
+        }
 
-    @classmethod
-    def builds_custom_topo_and_ping_all(cls) -> None:
-        topo = CustomTopo(topo_schema=cls._simple_topo)
+        topo = CustomTopo(topo_schema=simple_topo)
         net = Mininet(topo=topo)
 
-        cls._ping_all(net)
+        dumpNodeConnections(net.hosts)
 
-    @classmethod
-    def full_build_network_and_ping_all(cls) -> None:
+        net.start()
+        net.pingAll()
+        net.stop()
+
+    def full_build_network_and_ping_all(self) -> None:
+        self._display.title(f"Simulando uma rede com controlador faucet e " \
+                            f"pingando todos os hosts")
+
         builder = NetworkBuilder(
             topo_schema_path=File.get_config()["topo_schema_path"]
         )
@@ -42,7 +45,17 @@ class Network:
         if isinstance(build_result, Error):
             raise Exception(build_result.value)
 
-        cls._ping_all(net)
+        if net is not None:
+            dumpNodeConnections(net.hosts)
+
+            net.start()
+            net.pingAll()
+            net.stop()
+
 
 if __name__ == "__main__":
-    Network.full_build_network_and_ping_all()
+    tests = VirtualNetworkTests()
+
+    tests.builds_simple_topo_and_ping_all()
+    tests.full_build_network_and_ping_all()
+

@@ -1,6 +1,11 @@
 {
-    "faucet_config_path": "/etc/faucet/faucet.yml",
+    "faucet_config_path": "./dependencies/etc/faucet/faucet.yaml",
     "prometheus_config_path": "/etc/prometheus/prometheus.yml",
-    "acls_path": "",
-    "topo_schema_path": "./topo.example.json"
+    "topo_schema_path": "./topo.example.json",
+    "limit_bandwidth": false,
+    "bandwidths": {
+        "http": 30,
+        "ftp": 10,
+        "voip": 60
+    }
 }

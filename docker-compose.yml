@@ -11,13 +11,17 @@ services:
      - DISPLAY
     volumes:
      - ./dependencies/mininet/.bashrc:/root/.bashrc
-     - ./src/:/root/app/src/
-     - ./tests/:/root/app/tests/
+     - ./:/root/app/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
+    ports:
+      - 5000:5000
   faucet:
     restart: always
     image: faucet/faucet:1.10.11
+    environment:
+     - FAUCET_CONFIG=/etc/faucet/faucet.yaml
+     - FAUCET_CONFIG_STAT_RELOAD=1
     volumes:
       - ./dependencies/etc/faucet/:/etc/faucet/
       - ./dependencies/var/log/faucet/:/var/log/faucet/
