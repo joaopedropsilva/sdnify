@@ -19,6 +19,9 @@ services:
   faucet:
     restart: always
     image: faucet/faucet:1.10.11
+    environment:
+     - FAUCET_CONFIG=/etc/faucet/faucet.yaml
+     - FAUCET_CONFIG_STAT_RELOAD=1
     volumes:
       - ./dependencies/etc/faucet/:/etc/faucet/
       - ./dependencies/var/log/faucet/:/var/log/faucet/

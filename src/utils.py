@@ -7,7 +7,7 @@ class Display:
         self._prefix = prefix
 
     def _get_decorator(self) -> str:
-        return "\n" + f"{80 * '='}" + "\n"
+        return "\n" + f"{120 * '='}" + "\n"
 
     def title(self, content: str) -> None:
         print(f"{self._get_decorator()}" \
@@ -15,10 +15,10 @@ class Display:
               f"{self._get_decorator()}")
 
     def command(self, content: str) -> None:
-        print(f"[{self._prefix}:command] {content}")
+        print(f"[{self._prefix}:command] {content}\n")
 
     def message(self, content: str) -> None:
-        print(f"[{self._prefix}] {content}")
+        print(f"[{self._prefix}:message] {content}\n")
 
 
 class File:

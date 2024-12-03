@@ -75,23 +75,28 @@ class PolicyTests:
 
         self._managers = Managers()
 
-        policies = [
-            Policy(traffic_type=PolicyTypes.HTTP, bandwidth=10),
-            Policy(traffic_type=PolicyTypes.FTP, bandwidth=20),
-            Policy(traffic_type=PolicyTypes.VOIP, bandwidth=70)
-        ]
+        types_and_bandwidths = [
+            (PolicyTypes.HTTP, 30),
+            (PolicyTypes.FTP, 10),
+            (PolicyTypes.VOIP, 60)
+         ]
 
-        for p in policies:
-            self._display.message(f"Criando política para {p.traffic_type.value}")
-            creation_result = self._managers.flow.create(policy=p)
+        for t, b in types_and_bandwidths:
+            policy = Policy(traffic_type=t, bandwidth=b)
+
+            self._display.message(f"Criando política para " \
+                                  f"{policy.traffic_type.value} " \
+                                  f"({policy.bandwidth} Mbps)")
+
+            creation_result = self._managers.flow.create(policy=policy)
 
             if isinstance(creation_result, Error):
                 raise Exception(creation_result.value)
 
         File.update_config({"policies_created": True})
 
-        self._display.message(f"Políticas criadas com sucesso, reinicie o " \
-                              f"serviço do controlador para aplicá-las")
+        self._display.message(f"Políticas criadas com sucesso, execute o " \
+                              f"script novamente para executar os testes")
         exit(0)
 
     def simulate_http_traffic(self) -> None:

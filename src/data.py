@@ -178,8 +178,8 @@ class NetworkBuilder():
 
     def build_network(self) -> tuple[Success | Error, Mininet | None]:
         topo_schema = File.read_json_from(self._topo_schema_path)
-        validation_result = self._validate_topo(schema=topo_schema)
 
+        validation_result = self._validate_topo(schema=topo_schema)
         if not isinstance(validation_result, Success):
             return (validation_result, None)
 
