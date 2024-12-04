@@ -50,9 +50,9 @@ class VirtualNetworkManager:
 
 class FlowManager:
     _MIN_BANDWIDTH = 1
-    _MAX_BANDWIDTH = 100
     
     def __init__(self):
+        self._project_config = File.get_config()
         self._policies: List[Policy] = []
         self._config: dict = {}
 
@@ -61,7 +61,7 @@ class FlowManager:
             return Error.InvalidPolicyTrafficType
         
         if policy.bandwidth < self._MIN_BANDWIDTH \
-            or policy.bandwidth > self._MAX_BANDWIDTH:
+            or policy.bandwidth > self._project_config["max_bandwidth"]:
             return Error.InvalidPolicyBandwidth
 
         return Success.OperationOk
