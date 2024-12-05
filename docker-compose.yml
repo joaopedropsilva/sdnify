@@ -1,21 +1,26 @@
 ---
-name: sdn-qos-controller
+name: sdnify
 services:
+  api:
+    build:
+      context: .
+      dockerfile: ./dependencies/docker/api.Dockerfile
+    ports:
+      - 5000:5000
   mininet:
     build:
       context: .
-      dockerfile: ./dependencies/mininet/Dockerfile
+      dockerfile: ./dependencies/docker/mininet.Dockerfile
     tty: true
     privileged: true
     environment:
      - DISPLAY
     volumes:
-     - ./dependencies/mininet/.bashrc:/root/.bashrc
+     - ./dependencies/docker/mininet.bashrc:/root/.bashrc
+     - ./dependencies/docker/mininet.Xresources:/root/.Xresources
      - ./:/root/app/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
-    ports:
-      - 5000:5000
   faucet:
     restart: always
     image: faucet/faucet:1.10.11
