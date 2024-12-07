@@ -9,13 +9,13 @@ class Actions:
 
     @classmethod
     def create_network(cls) -> None:
-        response = requests.post(f"{cls._API_URL}/start")
+        response = requests.post(f"{cls._API_URL}/virtnet/start")
 
         print(f"STATUS: {response.status_code} - {response.text}")
 
     @classmethod
     def destroy_network(cls) -> None:
-        response = requests.get(f"{cls._API_URL}/destroy")
+        response = requests.get(f"{cls._API_URL}/virtnet/destroy")
 
         print(f"STATUS: {response.status_code} - {response.text}")
 
@@ -35,7 +35,7 @@ class Actions:
 
     @classmethod
     def show_network_state(cls) -> None:
-        response = requests.get(f"{cls._API_URL}/get_statistics")
+        response = requests.get(f"{cls._API_URL}/virtnet/status")
 
         print(f"STATUS: {response.status_code} - {response.text}")
 

@@ -1,11 +1,12 @@
 from mininet.util import dumpNodeConnections
 from mininet.net import Mininet
 
-from src.data import CustomTopo, NetworkBuilder, Error
+from src.virtnet import CustomTopo, VirtNetBuilder
+from src.data import Error
 from src.utils import Display, File
 
 
-class VirtualNetworkTests:
+class VirtNetTests:
     def __init__(self):
         self._display = Display(prefix="tests")
 
@@ -36,7 +37,7 @@ class VirtualNetworkTests:
         self._display.title(f"Simulando uma rede com controlador faucet e " \
                             f"pingando todos os hosts")
 
-        builder = NetworkBuilder(
+        builder = VirtNetBuilder(
             topo_schema_path=File.get_config()["topo_schema_path"]
         )
 
@@ -54,7 +55,7 @@ class VirtualNetworkTests:
 
 
 if __name__ == "__main__":
-    tests = VirtualNetworkTests()
+    tests = VirtNetTests()
 
     tests.builds_simple_topo_and_ping_all()
     tests.full_build_network_and_ping_all()

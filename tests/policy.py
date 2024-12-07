@@ -64,7 +64,7 @@ class PolicyTests:
             self._managers = Managers()
 
         if not self._managers.is_network_alive:
-            build_result = self._managers.virtual_network.generate()
+            build_result = self._managers.virtnet.generate()
 
             if isinstance(build_result, Error):
                 raise Exception(build_result.value)
@@ -72,13 +72,13 @@ class PolicyTests:
             self._managers.is_network_alive = True
 
         if self._net is None:
-            self._net = self._managers.virtual_network.net
+            self._net = self._managers.virtnet.net
 
     def stop_network(self) -> None:
         if self._managers is None:
             return
 
-        destruction_result = self._managers.virtual_network.destroy()
+        destruction_result = self._managers.virtnet.destroy()
         self._managers.is_network_alive = False
 
         if isinstance(destruction_result, Error):

@@ -1,51 +1,10 @@
-from mininet.clean import Cleanup
-from mininet.net import Mininet
 from typing import List
 from pathlib import Path
 import yaml
 
 from src.utils import File
-from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
-
-
-class VirtualNetworkManager:
-    def __init__(self):
-        topo_schema_path = File.get_config()["topo_schema_path"]
-        self._builder = NetworkBuilder(topo_schema_path=topo_schema_path)
-        self._net = None
-
-    @property
-    def net(self) -> Mininet | None:
-        return self._net
-
-    def generate(self) -> Success | Error:
-        (build_result, net) = self._builder.build_network()
-
-        if isinstance(build_result, Success):
-            if net is not None:
-                self._net = net
-                self._net.start()
-
-        return build_result
-
-    def destroy(self) -> Success | Error:
-        operation_result = Success.NetworkDestructionOk
-
-        if self._net is not None:
-            try:
-                self._net.stop()
-            except Exception:
-                operation_result = Error.NetworkDestructionFailed
-
-        Cleanup()
-
-        return operation_result
-
-    def invoke_cli(self):
-        CLI(self._net)
-
-    def report_state(self) -> None:
-        pass
+from src.data import Policy, PolicyTypes, Success, Error
+from src.virtnet import VirtNet
 
 
 class FlowManager:
@@ -247,13 +206,13 @@ class FlowManager:
 
 class Managers:
     def __init__(self):
-        self._virtual_network = VirtualNetworkManager()
+        self._virtnet = VirtNet()
         self._flow = FlowManager()
         self._is_network_alive = False
 
     @property
-    def virtual_network(self) -> VirtualNetworkManager:
-        return self._virtual_network
+    def virtnet(self) -> VirtNet:
+        return self._virtnet
 
     @property
     def flow(self) -> FlowManager:

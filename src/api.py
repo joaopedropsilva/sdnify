@@ -7,12 +7,12 @@ from src.data import Warning, Error
 app = Flask(__name__)
 managers = Managers()
 
-@app.route("/start", methods=["POST"])
-def start() -> Response:
+@app.route("/virtnet/start", methods=["POST"])
+def virtnet_start() -> Response:
     if managers.is_network_alive:
         return Response(response=Warning.NetworkAlreadyUp, status=409)
 
-    generation_result = managers.virtual_network.generate()
+    generation_result = managers.virtnet.generate()
 
     status = 201
     if isinstance(generation_result, Error):
@@ -20,12 +20,12 @@ def start() -> Response:
 
     return Response(response=generation_result.value, status=status)
 
-@app.route("/destroy")
-def destroy() -> Response:
+@app.route("/virtnet/destroy")
+def virtnet_destroy() -> Response:
     if not managers.is_network_alive:
         return Response(response=Warning.NetworkUnreachable, status=500)
 
-    destruction_result = managers.virtual_network.destroy()
+    destruction_result = managers.virtnet.destroy()
 
     status = 200
     if isinstance(destruction_result, Error):
@@ -33,11 +33,11 @@ def destroy() -> Response:
 
     return Response(response=destruction_result, status=status)
 
-@app.route("/get_statistics")
-def get_statistics() -> Response:
+@app.route("/virtnet/status")
+def virtnet_status() -> Response:
     return "ok"
 
-@app.route("/manage_policy", methods=["POST", "DELETE"])
+@app.route("/controller/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
     try:
         policy = request.json
@@ -64,7 +64,7 @@ def manage_policy() -> Response:
     except Exception:
         return Response(status=500)
     
-@app.route("/capture_alerts", methods=["POST"])
+@app.route("/controller/capture_alerts", methods=["POST"])
 def capture_alerts() -> Response:
     try:
         alerts_data = request.json

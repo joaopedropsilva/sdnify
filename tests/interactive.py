@@ -12,13 +12,13 @@ class InteractiveTests:
         if self._managers is None:
             self._managers = Managers()
 
-            build_result = self._managers.virtual_network.generate()
+            build_result = self._managers.virtnet.generate()
 
             if isinstance(build_result, Error):
                 raise Exception(build_result.value)
 
         if self._net is None:
-            self._net = self._managers.virtual_network.net
+            self._net = self._managers.virtnet.net
 
     def cli(self):
         print("[test] Instanciar topologia definida na configuração com \
