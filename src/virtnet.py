@@ -197,6 +197,7 @@ class VirtNet:
         if self._net is not None:
             try:
                 self._net.stop()
+                self._net = None
             except Exception:
                 operation_result = Error.NetworkDestructionFailed
 

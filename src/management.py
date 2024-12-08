@@ -184,7 +184,7 @@ class FlowManager:
             "meters": existing_config.get("meters", {})
         }
 
-    def _process_alerts(self) -> Success | Error:
+    def process_alerts(self, alerts: dict) -> Success | Error:
         return Success.OperationOk
 
     def redirect_traffic(self) -> Success | Error:
@@ -203,28 +203,25 @@ class FlowManager:
         
         return self._update_tables(policy=policy, operation="remove")
 
-
-class Managers:
+class NetworkManager:
     def __init__(self):
-        self._virtnet = VirtNet()
         self._flow = FlowManager()
-        self._is_network_alive = False
+
+    @property
+    def flow(self) -> FlowManager:
+        return self._flow
+
+
+class VirtNetManager(NetworkManager):
+    def __init__(self):
+        super().__init__()
+        self._virtnet = VirtNet()
 
     @property
     def virtnet(self) -> VirtNet:
         return self._virtnet
 
     @property
-    def flow(self) -> FlowManager:
-        return self._flow
-
-    @property
-    def is_network_alive(self) -> bool:
-        return self._is_network_alive
-
-    # Remover isso, não é responsabilidade de serviços de fora
-    # dizer se a rede está viva ou não
-    @is_network_alive.setter
-    def is_network_alive(self, network_status: bool) -> None:
-        self._is_network_alive = network_status
+    def network_already_up(self) -> bool:
+        return True if self._virtnet.net is not None else False
 

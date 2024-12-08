@@ -1,18 +1,18 @@
 from flask import Flask, Response, request
 import json
 
-from src.management import Managers
+from src.management import VirtNetManager
 from src.data import Warning, Error
 
 app = Flask(__name__)
-managers = Managers()
+manager = VirtNetManager()
 
 @app.route("/virtnet/start", methods=["POST"])
 def virtnet_start() -> Response:
-    if managers.is_network_alive:
+    if manager.network_already_up:
         return Response(response=Warning.NetworkAlreadyUp, status=409)
 
-    generation_result = managers.virtnet.generate()
+    generation_result = manager.virtnet.generate()
 
     status = 201
     if isinstance(generation_result, Error):
@@ -20,12 +20,12 @@ def virtnet_start() -> Response:
 
     return Response(response=generation_result.value, status=status)
 
-@app.route("/virtnet/destroy")
+@app.route("/virtnet/destroy", methods=["POST"])
 def virtnet_destroy() -> Response:
-    if not managers.is_network_alive:
+    if not manager.network_already_up:
         return Response(response=Warning.NetworkUnreachable, status=500)
 
-    destruction_result = managers.virtnet.destroy()
+    destruction_result = manager.virtnet.destroy()
 
     status = 200
     if isinstance(destruction_result, Error):
@@ -35,7 +35,8 @@ def virtnet_destroy() -> Response:
 
 @app.route("/virtnet/status")
 def virtnet_status() -> Response:
-    return "ok"
+    return Response(response=json.dumps({"status": manager.network_already_up}),
+                    status=200)
 
 @app.route("/controller/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
@@ -44,7 +45,7 @@ def manage_policy() -> Response:
         method = request.method
         
         if method == "POST":
-            creation_result = managers.flow.create(policy)
+            creation_result = manager.flow.create(policy)
 
             status = 201
             if isinstance(creation_result, Error):
@@ -52,7 +53,7 @@ def manage_policy() -> Response:
 
             return Response(response=creation_result, status=status)
         elif method == "DELETE":
-            removal_result = managers.flow.remove(policy)
+            removal_result = manager.flow.remove(policy)
 
             status = 200
             if isinstance(removal_result, Error):
@@ -70,7 +71,7 @@ def capture_alerts() -> Response:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
         
-        result = managers.flow.process_alerts(alerts)
+        result = manager.flow.process_alerts(alerts)
 
         if isinstance(result, Error): 
             return Response(
@@ -92,7 +93,7 @@ def capture_alerts() -> Response:
             mimetype="application/json",
         )
 
-@app.route("/status", methods=["GET"])
+@app.route("/status")
 def status() -> Response:
     return Response(status=200)
 
