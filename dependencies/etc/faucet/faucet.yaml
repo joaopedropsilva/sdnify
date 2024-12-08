@@ -9,12 +9,12 @@ dps:
     hardware: Open vSwitch
     interfaces:
       1:
-        description: host1 container
         name: h1
+        description: virtualized h1
         native_vlan: test
       2:
-        description: host2 container
         name: h2
+        description: virtualized h2
         native_vlan: test
 vlans:
   test:

@@ -1,26 +1,22 @@
 ---
 name: sdnify
 services:
-  api:
+  app:
     build:
       context: .
-      dockerfile: ./dependencies/docker/api.Dockerfile
-    ports:
-      - 5000:5000
-  mininet:
-    build:
-      context: .
-      dockerfile: ./dependencies/docker/mininet.Dockerfile
+      dockerfile: app.Dockerfile
     tty: true
     privileged: true
     environment:
      - DISPLAY
     volumes:
-     - ./dependencies/docker/mininet.bashrc:/root/.bashrc
-     - ./dependencies/docker/mininet.Xresources:/root/.Xresources
+     - ./dependencies/.bashrc:/root/.bashrc
+     - ./dependencies/.Xresources:/root/.Xresources
      - ./:/root/app/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules
+    ports:
+      - 5000:5000
   faucet:
     restart: always
     image: faucet/faucet:1.10.11

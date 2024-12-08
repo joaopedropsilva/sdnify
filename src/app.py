@@ -31,7 +31,7 @@ def virtnet_destroy() -> Response:
     if isinstance(destruction_result, Error):
         status=500
 
-    return Response(response=destruction_result, status=status)
+    return Response(response=destruction_result.value, status=status)
 
 @app.route("/virtnet/status")
 def virtnet_status() -> Response:
@@ -51,7 +51,7 @@ def manage_policy() -> Response:
             if isinstance(creation_result, Error):
                 status = 400
 
-            return Response(response=creation_result, status=status)
+            return Response(response=creation_result.value, status=status)
         elif method == "DELETE":
             removal_result = manager.flow.remove(policy)
 
@@ -59,7 +59,7 @@ def manage_policy() -> Response:
             if isinstance(removal_result, Error):
                 status = 400
 
-            return Response(response=removal_result, status=status)
+            return Response(response=removal_result.value, status=status)
         else:
             return Response(response="Método HTTP inválido.", status=405)
     except Exception:
