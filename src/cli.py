@@ -1,43 +1,51 @@
 from argparse import ArgumentParser
+from flask import Response
 from subprocess import run
-#import requests
+import requests
+
+from src.utils import Display
 
 
-# Padronizar output em STDOUT
 class Actions:
     _API_URL = "http://127.0.0.1:5000"
 
+    @staticmethod
+    def _format_api_output_to_stdout(func):
+        def _wrapper(_cls, *args):
+            dp = Display(prefix="cli")
+
+            response = func(_cls, *args)
+
+            dp.message(f"{response.status_code} | {response.text}")
+
+        return _wrapper
+
     @classmethod
-    def create_network(cls) -> None:
-        response = requests.post(f"{cls._API_URL}/virtnet/start")
-
-        print(f"STATUS: {response.status_code} - {response.text}")
-
-    @classmethod
-    def destroy_network(cls) -> None:
-        response = requests.get(f"{cls._API_URL}/virtnet/destroy")
-
-        print(f"STATUS: {response.status_code} - {response.text}")
+    @_format_api_output_to_stdout
+    def virtnet_create(cls) -> Response:
+        return requests.post(f"{cls._API_URL}/virtnet/start")
 
     @classmethod
-    def create_policy(cls, traffic_type: str, bandwidth: float) -> None:
+    @_format_api_output_to_stdout
+    def virtnet_destroy(cls) -> Response:
+        return requests.post(f"{cls._API_URL}/virtnet/destroy")
+
+    @classmethod
+    @_format_api_output_to_stdout
+    def virtnet_status(cls) -> Response:
+        return requests.get(f"{cls._API_URL}/virtnet/status")
+
+    @classmethod
+    @_format_api_output_to_stdout
+    def create_policy(cls, traffic_type: str, bandwidth: float) -> Response:
         policy = {"traffic_type": traffic_type, "bandwidth": bandwidth}
-        response = requests.post(f"{cls._API_URL}/manage_policy", json=policy)
-
-        print(f"STATUS: {response.status_code} - {response.text}")
+        return requests.post(f"{cls._API_URL}/manage_policy", json=policy)
 
     @classmethod
-    def remove_policy(cls, traffic_type: str) -> None:
+    @_format_api_output_to_stdout
+    def remove_policy(cls, traffic_type: str) -> Response:
         policy = {"traffic_type": traffic_type}
-        response = requests.delete(f"{cls._API_URL}/manage_policy", json=policy)
-        
-        print(f"STATUS: {response.status_code} - {response.text}")
-
-    @classmethod
-    def show_network_state(cls) -> None:
-        response = requests.get(f"{cls._API_URL}/virtnet/status")
-
-        print(f"STATUS: {response.status_code} - {response.text}")
+        return requests.delete(f"{cls._API_URL}/manage_policy", json=policy)
 
     @staticmethod
     def show_manual() -> None:
@@ -65,12 +73,12 @@ class Dispatcher:
         parser.add_argument(
             "action",
             type=str,
-            choices=["create_network",
-                     "destroy_network",
+            choices=["virtnet_create",
+                     "virtnet_destroy",
+                     "virtnet_status",
                      "create_policy",
                      "remove_policy",
-                     "show_network_state",
-                     "show_manual",
+                     "manual",
                      "test"],
             help="Escolha a ação a ser executada"
         )
@@ -101,13 +109,13 @@ class Dispatcher:
 
         args = parser.parse_args()
         action_map = {
-            "create_network": Actions.create_network,
-            "destroy_network": Actions.destroy_network,
+            "virtnet_create": Actions.virtnet_create,
+            "virtnet_destroy": Actions.virtnet_destroy,
+            "virtnet_status": Actions.virtnet_status,
             "create_policy": lambda: Actions.create_policy(args.traffic_type,
                                                            args.bandwidth),
             "remove_policy": lambda: Actions.remove_policy(args.traffic_type),
-            "show_network_state": Actions.show_network_state,
-            "show_manual": Actions.show_manual,
+            "manual": Actions.show_manual,
             "test": lambda: Actions.run_tests(args.interactive,
                                                    args.file)
         }
