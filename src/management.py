@@ -3,7 +3,8 @@ from pathlib import Path
 import yaml
 
 from src.utils import File
-from src.data import Policy, PolicyTypes, Success, Error
+from src.data import Success, Error
+from src.policy import Policy, PolicyTypes
 from src.virtnet import VirtNet
 
 
@@ -15,17 +16,8 @@ class FlowManager:
         self._policies: List[Policy] = []
         self._config: dict = {}
 
-    def _validate(self, policy: Policy) -> Success | Error:
-        if not isinstance(policy.traffic_type, PolicyTypes):
-            return Error.InvalidPolicyTrafficType
-        
-        if policy.bandwidth < self._MIN_BANDWIDTH \
-            or policy.bandwidth > self._project_config["max_bandwidth"]:
-            return Error.InvalidPolicyBandwidth
-
-        return Success.OperationOk
-
     def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
+        # Alterar essa lógica para não fazer tudo aqui
         if operation == "create":
             
             if f"{policy.traffic_type.value}" not in self._config:
@@ -191,17 +183,19 @@ class FlowManager:
         return Success.OperationOk
 
     def create(self, policy: Policy) -> Success | Error:
-        validation_result = self._validate(policy)
-        if isinstance(validation_result, Error):
-            return validation_result
+        return self._update_tables(policy=policy,
+                                   operation="create")
 
-        return self._update_tables(policy=policy, operation="create")
-
-    def remove(self, policy: Policy) -> Success | Error:
-        if not any(p.traffic_type == policy.traffic_type for p in self._policies):
+    def remove_policy_by(self, traffic_type: PolicyTypes) -> Success | Error:
+        if not any(p.traffic_type == traffic_type \
+                   for p in self._policies):
             return Error.PolicyNotFound  
         
-        return self._update_tables(policy=policy, operation="remove")
+
+        temp_policy = Policy(traffic_type=traffic_type,
+                             bandwidth=30)
+
+        return self._update_tables(policy=temp_policy, operation="remove")
 
 class NetworkManager:
     def __init__(self):

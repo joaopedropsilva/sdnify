@@ -1,12 +1,6 @@
 from enum import Enum
 
 
-class PolicyTypes(Enum):
-    VOIP = "voip"
-    HTTP = "http"
-    FTP = "ftp"
-
-
 class Warning(Enum):
     NetworkAlreadyUp = "Rede virtual já instanciada."
     NetworkUnreachable = "Rede virtual não localizada ou offline."
@@ -33,15 +27,10 @@ class Error(Enum):
     NetworkDestructionFailed = "Falha ao destruir a rede virtual."
     InvalidPolicyTrafficType = "Tipo de tráfego inválido para política de classificação."
     InvalidPolicyBandwidth = "Largura de banda inválida para política de classificação."
+    BandwidthNotFound = "Largura de banda inválida ausente."
     PolicyNotFound = "Política de tráfego não encontrada."
     UnknownOperation = "Operação desconhecida. Use 'create', 'update' ou 'delete'."
     InvalidBandwidthValue = "A banda reservada deve ser um valor entre 1 e 100."
     ConfigWriteFailure = "Falha ao escrever o arquivo de configuração."
     ControllerConfigNotFound = "Configuração do controlador não encontrada."
-
-
-class Policy:
-    def __init__(self, traffic_type: PolicyTypes, bandwidth: int):
-        self.traffic_type = traffic_type
-        self.bandwidth = bandwidth
 

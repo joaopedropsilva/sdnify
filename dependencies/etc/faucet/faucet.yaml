@@ -16,6 +16,7 @@ dps:
         name: h2
         description: virtualized h2
         native_vlan: test
+meters: {}
 vlans:
   test:
     description: vlan test

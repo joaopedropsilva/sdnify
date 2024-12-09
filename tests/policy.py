@@ -1,7 +1,8 @@
 from mininet.node import Host
 
 from src.management import VirtNetManager
-from src.data import Error, Policy, PolicyTypes
+from src.data import Error
+from src.policy import Policy, PolicyTypes
 from src.utils import Display, File
 
 

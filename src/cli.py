@@ -37,15 +37,17 @@ class Actions:
 
     @classmethod
     @_format_api_output_to_stdout
-    def create_policy(cls, traffic_type: str, bandwidth: float) -> Response:
-        policy = {"traffic_type": traffic_type, "bandwidth": bandwidth}
-        return requests.post(f"{cls._API_URL}/manage_policy", json=policy)
+    def create_policy(cls, traffic_type: str, bandwidth: int) -> Response:
+        data = {"traffic_type": traffic_type, "bandwidth": bandwidth}
+        return requests.post(f"{cls._API_URL}/controller/manage_policy",
+                             json=data)
 
     @classmethod
     @_format_api_output_to_stdout
     def remove_policy(cls, traffic_type: str) -> Response:
-        policy = {"traffic_type": traffic_type}
-        return requests.delete(f"{cls._API_URL}/manage_policy", json=policy)
+        data = {"traffic_type": traffic_type}
+        return requests.delete(f"{cls._API_URL}/controller/manage_policy",
+                               json=data)
 
     @staticmethod
     def show_manual() -> None:
@@ -84,12 +86,14 @@ class Dispatcher:
         )
 
         parser.add_argument("--traffic-type",
+                            "-t",
                             type=str,
                             help="Tipo de tráfego alvo da política \
                                 (ex: HTTP, FTP e VOiP)")
 
         parser.add_argument("--bandwidth",
-                            type=float,
+                            "-b",
+                            type=int,
                             help="Largura de banda para a política")
 
         parser.add_argument("--interactive",

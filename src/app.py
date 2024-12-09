@@ -2,7 +2,10 @@ from flask import Flask, Response, request
 import json
 
 from src.management import VirtNetManager
-from src.data import Warning, Error
+from src.data import Success, Warning, Error
+from src.policy import PolicyTypes, PolicyFactory
+from src.utils import File
+
 
 app = Flask(__name__)
 manager = VirtNetManager()
@@ -41,23 +44,49 @@ def virtnet_status() -> Response:
 @app.route("/controller/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
     try:
-        policy = request.json
+        data = request.json
         method = request.method
         
-        if method == "POST":
-            creation_result = manager.flow.create(policy)
 
-            status = 201
-            if isinstance(creation_result, Error):
-                status = 400
+        status = 400
+        if method == "POST":
+            factory = \
+                PolicyFactory(policy_data=data,
+                              max_bandwidth=File.get_config()["max_bandwidth"])
+
+            (create_type_result, p) = factory.create()
+
+            if isinstance(create_type_result, Error):
+                return Response(response=create_type_result.value,
+                                status=status)
+
+            if p is None:
+                return Response(status=500)
+
+            creation_result = manager.flow.create(policy=p)
+
+            if isinstance(creation_result, Success):
+                status = 201
 
             return Response(response=creation_result.value, status=status)
         elif method == "DELETE":
-            removal_result = manager.flow.remove(policy)
+            traffic_type = str()
+            try:
+                traffic_type = data["traffic_type"]
+            except KeyError:
+                return Response(response="Atributo traffic_type ausente.",
+                                status=400)
+            try:
+                traffic_type = PolicyTypes[traffic_type.upper()]
+            except KeyError:
+                return Response(response=Error.InvalidPolicyTrafficType.value,
+                                status=400)
 
-            status = 200
-            if isinstance(removal_result, Error):
-                status = 400
+            removal_result = \
+                    manager.flow.remove_policy_by(traffic_type=traffic_type)
+
+            if isinstance(removal_result, Success):
+                status = 200
 
             return Response(response=removal_result.value, status=status)
         else:
