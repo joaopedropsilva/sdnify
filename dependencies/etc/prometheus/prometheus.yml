@@ -22,7 +22,7 @@ scrape_configs:
       - targets: ['localhost:9090']
   - job_name: 'faucet'
     static_configs:
-      - targets: ['localhost:9302']
+      - targets: ['faucet:9302']
   - job_name: 'gauge'
     static_configs:
-      - targets: ['localhost:9303']
+      - targets: ['gauge:9303']
