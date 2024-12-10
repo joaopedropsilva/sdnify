@@ -1,18 +1,21 @@
 from flask import Flask, Response, request
 import json
 
-from src.management import Managers
-from src.data import Warning, Error
+from src.management import VirtNetManager
+from src.data import Success, Warning, Error
+from src.policy import PolicyTypes, PolicyFactory
+from src.utils import File
+
 
 app = Flask(__name__)
-managers = Managers()
+manager = VirtNetManager()
 
-@app.route("/start", methods=["POST"])
-def start() -> Response:
-    if managers.is_network_alive:
+@app.route("/virtnet/start", methods=["POST"])
+def virtnet_start() -> Response:
+    if manager.network_already_up:
         return Response(response=Warning.NetworkAlreadyUp, status=409)
 
-    generation_result = managers.virtual_network.generate()
+    generation_result = manager.virtnet.generate()
 
     status = 201
     if isinstance(generation_result, Error):
@@ -20,57 +23,84 @@ def start() -> Response:
 
     return Response(response=generation_result.value, status=status)
 
-@app.route("/destroy")
-def destroy() -> Response:
-    if not managers.is_network_alive:
+@app.route("/virtnet/destroy", methods=["POST"])
+def virtnet_destroy() -> Response:
+    if not manager.network_already_up:
         return Response(response=Warning.NetworkUnreachable, status=500)
 
-    destruction_result = managers.virtual_network.destroy()
+    destruction_result = manager.virtnet.destroy()
 
     status = 200
     if isinstance(destruction_result, Error):
         status=500
 
-    return Response(response=destruction_result, status=status)
+    return Response(response=destruction_result.value, status=status)
 
-@app.route("/get_statistics")
-def get_statistics() -> Response:
-    return "ok"
+@app.route("/virtnet/status")
+def virtnet_status() -> Response:
+    return Response(response=json.dumps({"status": manager.network_already_up}),
+                    status=200)
 
-@app.route("/manage_policy", methods=["POST", "DELETE"])
+@app.route("/controller/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
     try:
-        policy = request.json
+        data = request.json
         method = request.method
         
+
+        status = 400
         if method == "POST":
-            creation_result = managers.flow.create(policy)
+            factory = \
+                PolicyFactory(policy_data=data,
+                              max_bandwidth=File.get_config()["max_bandwidth"])
 
-            status = 201
-            if isinstance(creation_result, Error):
-                status = 400
+            (create_type_result, p) = factory.create()
 
-            return Response(response=creation_result, status=status)
+            if isinstance(create_type_result, Error):
+                return Response(response=create_type_result.value,
+                                status=status)
+
+            if p is None:
+                return Response(status=500)
+
+            creation_result = manager.flow.create(policy=p)
+
+            if isinstance(creation_result, Success):
+                status = 201
+
+            return Response(response=creation_result.value, status=status)
         elif method == "DELETE":
-            removal_result = managers.flow.remove(policy)
+            traffic_type = str()
+            try:
+                traffic_type = data["traffic_type"]
+            except KeyError:
+                return Response(response="Atributo traffic_type ausente.",
+                                status=400)
+            try:
+                traffic_type = PolicyTypes[traffic_type.upper()]
+            except KeyError:
+                return Response(response=Error.InvalidPolicyTrafficType.value,
+                                status=400)
 
-            status = 200
-            if isinstance(removal_result, Error):
-                status = 400
+            removal_result = \
+                    manager.flow.remove_policy_by(traffic_type=traffic_type)
 
-            return Response(response=removal_result, status=status)
+            if isinstance(removal_result, Success):
+                status = 200
+
+            return Response(response=removal_result.value, status=status)
         else:
             return Response(response="Método HTTP inválido.", status=405)
     except Exception:
         return Response(status=500)
     
-@app.route("/capture_alerts", methods=["POST"])
+@app.route("/controller/capture_alerts", methods=["POST"])
 def capture_alerts() -> Response:
     try:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
         
-        result = managers.flow.process_alerts(alerts)
+        result = manager.flow.process_alerts(alerts)
 
         if isinstance(result, Error): 
             return Response(
@@ -92,6 +122,10 @@ def capture_alerts() -> Response:
             mimetype="application/json",
         )
 
+@app.route("/status")
+def status() -> Response:
+    return Response(status=200)
+
 if __name__ == "__main__":
-    app.run(host:="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)
 

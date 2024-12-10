@@ -1,71 +1,23 @@
-from mininet.clean import Cleanup
-from mininet.net import Mininet
 from typing import List
 from pathlib import Path
 import yaml
 
-
 from src.utils import File
-from src.data import NetworkBuilder, Policy, PolicyTypes, Success, Error
+from src.data import Success, Error
+from src.policy import Policy, PolicyTypes
+from src.virtnet import VirtNet
 
-
-class VirtualNetworkManager:
-    def __init__(self):
-        topo_schema_path = File.get_config()["topo_schema_path"]
-        self._builder = NetworkBuilder(topo_schema_path=topo_schema_path)
-        self._net = None
-
-    @property
-    def net(self) -> Mininet | None:
-        return self._net
-
-    def generate(self) -> Success | Error:
-        (build_result, net) = self._builder.build_network()
-
-        if isinstance(build_result, Success):
-            if net is not None:
-                self._net = net
-                self._net.start()
-
-        return build_result
-
-    def destroy(self) -> Success | Error:
-        operation_result = Success.NetworkDestructionOk
-
-        if self._net is not None:
-            try:
-                self._net.stop()
-            except Exception:
-                operation_result = Error.NetworkDestructionFailed
-
-        Cleanup()
-
-        return operation_result
-
-    def report_state(self) -> None:
-        pass
 
 class FlowManager:
-    # mover MAX parar o arquivo de config
     _MIN_BANDWIDTH = 1
-    _MAX_BANDWIDTH = 100
     
     def __init__(self):
+        self._project_config = File.get_config()
         self._policies: List[Policy] = []
         self._config: dict = {}
 
-    def _validate(self, policy: Policy) -> Success | Error:
-        if not isinstance(policy.traffic_type, PolicyTypes):
-            return Error.InvalidPolicyTrafficType
-        
-        if policy.bandwidth < self._MIN_BANDWIDTH \
-            or policy.bandwidth > self._MAX_BANDWIDTH:
-            return Error.InvalidPolicyBandwidth
-
-        return Success.OperationOk
-
     def _update_tables(self, policy: Policy, operation: str) -> Success | Error:
-   
+        # Alterar essa lógica para não fazer tudo aqui
         if operation == "create":
             
             if f"{policy.traffic_type.value}" not in self._config:
@@ -185,9 +137,7 @@ class FlowManager:
             return Success.ConfigWriteOk
 
         except Exception:
-            
             return Error.ConfigWriteFailure
-        
         
     def _delete_config(self, policy: Policy):
         faucet_path = Path(File.get_project_path(),
@@ -211,7 +161,6 @@ class FlowManager:
         existing_config["vlans"]["test"]["acls_in"] = acl_names
         existing_config_wt_vlans = existing_config.copy()
         del existing_config_wt_vlans["vlans"]
-        
             
         with open(faucet_path, "w") as file:
             
@@ -222,54 +171,51 @@ class FlowManager:
             file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
             file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
         
-        
         self._config = {
             "acls": existing_config.get("acls", {}),
             "meters": existing_config.get("meters", {})
         }
 
-    def _process_alerts(self) -> Success | Error:
+    def process_alerts(self, alerts: dict) -> Success | Error:
         return Success.OperationOk
 
     def redirect_traffic(self) -> Success | Error:
         return Success.OperationOk
 
     def create(self, policy: Policy) -> Success | Error:
-        validation_result = self._validate(policy)
-        if isinstance(validation_result, Error):
-            return validation_result
+        return self._update_tables(policy=policy,
+                                   operation="create")
 
-        return self._update_tables(policy=policy, 
-                                       operation="create")
-
-    def remove(self, policy: Policy) -> Success | Error:
-        if not any(p.traffic_type == policy.traffic_type for p in self._policies):
+    def remove_policy_by(self, traffic_type: PolicyTypes) -> Success | Error:
+        if not any(p.traffic_type == traffic_type \
+                   for p in self._policies):
             return Error.PolicyNotFound  
         
-        return self._update_tables(policy=policy,
-                                operation="remove")
 
-class Managers:
+        temp_policy = Policy(traffic_type=traffic_type,
+                             bandwidth=30)
+
+        return self._update_tables(policy=temp_policy, operation="remove")
+
+class NetworkManager:
     def __init__(self):
-        self._virtual_network = VirtualNetworkManager()
         self._flow = FlowManager()
-        self._is_network_alive = False
-
-    @property
-    def virtual_network(self) -> VirtualNetworkManager:
-        return self._virtual_network
 
     @property
     def flow(self) -> FlowManager:
         return self._flow
 
-    @property
-    def is_network_alive(self) -> bool:
-        return self._is_network_alive
 
-    # Remover isso, não é responsabilidade de serviços de fora
-    # dizer se a rede está viva ou não
-    @is_network_alive.setter
-    def is_network_alive(self, network_status: bool) -> None:
-        self._is_network_alive = network_status
+class VirtNetManager(NetworkManager):
+    def __init__(self):
+        super().__init__()
+        self._virtnet = VirtNet()
+
+    @property
+    def virtnet(self) -> VirtNet:
+        return self._virtnet
+
+    @property
+    def network_already_up(self) -> bool:
+        return True if self._virtnet.net is not None else False
 

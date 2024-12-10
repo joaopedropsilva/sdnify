@@ -3,7 +3,7 @@ FROM ubuntu:22.04
 USER root
 WORKDIR /root/app
 
-COPY ./dependencies/mininet/ENTRYPOINT.sh /root
+COPY app.ENTRYPOINT.sh /root
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -22,9 +22,9 @@ RUN apt-get update \
     x11-xserver-utils \
     xterm \
     && rm -rf /var/lib/apt/lists/* \
-    && chmod +x /root/ENTRYPOINT.sh
+    && chmod +x /root/app.ENTRYPOINT.sh
 
 EXPOSE 6633 6653 6640
 
-ENTRYPOINT ["/root/ENTRYPOINT.sh"]
+ENTRYPOINT ["/root/app.ENTRYPOINT.sh"]
 

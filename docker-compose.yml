@@ -1,16 +1,17 @@
 ---
-name: sdn-qos-controller
+name: sdnify
 services:
-  mininet:
+  app:
     build:
       context: .
-      dockerfile: ./dependencies/mininet/Dockerfile
+      dockerfile: app.Dockerfile
     tty: true
     privileged: true
     environment:
      - DISPLAY
     volumes:
-     - ./dependencies/mininet/.bashrc:/root/.bashrc
+     - ./dependencies/.bashrc:/root/.bashrc
+     - ./dependencies/.Xresources:/root/.Xresources
      - ./:/root/app/
      - /tmp/.X11-unix:/tmp/.X11-unix
      - /lib/modules:/lib/modules

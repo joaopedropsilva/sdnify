@@ -1,7 +1,8 @@
 from mininet.node import Host
 
-from src.management import Managers
-from src.data import Error, Policy, PolicyTypes
+from src.management import VirtNetManager
+from src.data import Error
+from src.policy import Policy, PolicyTypes
 from src.utils import Display, File
 
 
@@ -35,7 +36,7 @@ class CommandGenerator:
 
 class PolicyTests:
     def __init__(self):
-        self._managers = None
+        self._manager = None
         self._net = None
         self._display = Display(prefix="tests")
 
@@ -60,26 +61,23 @@ class PolicyTests:
         h1.cmd(kill_iperf)
 
     def start_network_and_management(self) -> None:
-        if self._managers is None:
-            self._managers = Managers()
+        if self._manager is None:
+            self._manager = VirtNetManager()
 
-        if not self._managers.is_network_alive:
-            build_result = self._managers.virtual_network.generate()
+        if not self._manager.network_already_up:
+            build_result = self._manager.virtnet.generate()
 
             if isinstance(build_result, Error):
                 raise Exception(build_result.value)
 
-            self._managers.is_network_alive = True
-
         if self._net is None:
-            self._net = self._managers.virtual_network.net
+            self._net = self._manager.virtnet.net
 
     def stop_network(self) -> None:
-        if self._managers is None:
+        if self._manager is None:
             return
 
-        destruction_result = self._managers.virtual_network.destroy()
-        self._managers.is_network_alive = False
+        destruction_result = self._manager.virtnet.destroy()
 
         if isinstance(destruction_result, Error):
             raise Exception(destruction_result.value)
@@ -87,7 +85,7 @@ class PolicyTests:
     def create_test_policies(self) -> None:
         self._display.title("Criando políticas de classificação de pacote")
 
-        self._managers = Managers()
+        self._manager = VirtNetManager()
 
         bandwidths = File.get_config()["bandwidths"]
 
@@ -104,7 +102,7 @@ class PolicyTests:
                                   f"{policy.traffic_type.value} " \
                                   f"({policy.bandwidth} Mbps)")
 
-            creation_result = self._managers.flow.create(policy=policy)
+            creation_result = self._manager.flow.create(policy=policy)
 
             if isinstance(creation_result, Error):
                 raise Exception(creation_result.value)
