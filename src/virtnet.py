@@ -162,8 +162,18 @@ class VirtNetBuilder():
         net = None
         build_result = None
         try:
-            net = Mininet(topo=CustomTopo(topo_schema=self._ts.schema),
-                          controller=self._create_controller())
+            net = Mininet(topo=CustomTopo(topo_schema=self._ts.schema))
+
+            net.addController(name="c1",
+                              controller=RemoteController,
+                              ip="faucet",
+                              port=6653)
+
+            net.addController(name="c2",
+                              controller=RemoteController,
+                              ip="gauge",
+                              port=6653)
+
             build_result = Success.NetworkBuildOk
         except Exception:
             build_result = Error.NetworkBuildFailed
