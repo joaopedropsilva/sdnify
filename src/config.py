@@ -26,9 +26,9 @@ class Config:
         try:
             with open(path, "r") as file:
                 if is_json:
-                    return json.load(file)
+                    return "", json.load(file)
                 
-                return yaml.safe_load(file)
+                return "", yaml.safe_load(file)
         except FileNotFoundError:
             return _Messages.ErrorConfigNotFound.value, {}
         except (yaml.YAMLError, json.JSONDecodeError):
@@ -54,7 +54,7 @@ class Config:
 
 
 class FaucetConfig(Config):
-    _FAUCET_PATH = "etc/faucet/faucet.yaml" 
+    _FAUCET_PATH = "dependencies/etc/faucet/faucet.yaml"
 
     @classmethod
     def get(cls) -> tuple[str, dict]:
