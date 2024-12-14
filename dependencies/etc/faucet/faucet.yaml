@@ -3,6 +3,33 @@ acls:
   - rule:
       actions:
         allow: 1
+  http:
+  - rule:
+      dl_type: '0x800'
+      nw_proto: 6
+      tcp_dst: 80
+      actions:
+        allow: 1
+  ftp:
+  - rule:
+      dl_type: '0x800'
+      nw_proto: 6
+      tcp_dst: 21
+      actions:
+        allow: 1
+  ping:
+  - rule:
+      dl_type: '0x800'
+      ip_proto: 1
+      actions:
+        allow: 1
+  voip:
+  - rule:
+      dl_type: '0x800'
+      nw_proto: 17
+      udp_dst: 5001
+      actions:
+        allow: 1
 dps:
   sw1:
     dp_id: 1
@@ -16,9 +43,12 @@ dps:
         name: h2
         description: virtualized h2
         native_vlan: test
-meters: {}
+      3:
+        name: h3
+        description: virtualized h3
+        native_vlan: test
 vlans:
   test:
-    description: vlan test
     vid: 100
-    acls_in: [allow-all]
+    acls_in: [voip, ping, http, ftp, allow-all]
+
