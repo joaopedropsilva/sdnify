@@ -1,6 +1,6 @@
 from mininet.cli import CLI
 
-from src.management import Managers
+from src.management import VirtNetManager
 from src.data import Error
 
 class InteractiveTests:
@@ -10,7 +10,7 @@ class InteractiveTests:
 
     def _start_network_and_management(self) -> None:
         if self._managers is None:
-            self._managers = Managers()
+            self._managers = VirtNetManager()
 
             build_result = self._managers.virtnet.generate()
 
