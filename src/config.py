@@ -145,23 +145,14 @@ class FaucetConfig(Config):
             **rate_limit_config["meters"],
         }
 
-        acl_names = list(existing_config["acls"].keys()).reverse()
 
+        acl_names = list(existing_config["acls"].keys())
+        acl_names.reverse()
         existing_config["vlans"]["test"]["acls_in"] = acl_names
-        existing_config_wt_vlans = existing_config.copy()
-        del existing_config_wt_vlans["vlans"]
 
-        faucet_path = Path(
-            cls._get_project_path(),
-            cls._FAUCET_PATH
-        )
+        faucet_path = Path(cls._get_project_path(), cls._FAUCET_PATH)
         with open(faucet_path, "w") as file:
-            file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
-            file.write("vlans:\n")
-            file.write("  test:\n")
-            file.write(f"    description: {existing_config['vlans']['test']['description']}\n")
-            file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
-            file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
+            file.write(yaml.dump(existing_config, default_flow_style=False))
 
         return "", True
 
