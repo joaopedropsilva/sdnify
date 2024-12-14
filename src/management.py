@@ -14,40 +14,6 @@ class FlowManager:
         self._project_config = File.get_config()
         self._policies: List[Policy] = []
 
-    def _delete_config(self, policy: Policy):
-        from pathlib import Path
-        import yaml
-        faucet_path = Path(File.get_project_path(),
-                           "dependencies/etc/faucet/faucet.yaml")
-
-        acl = f"{policy.traffic_type.value}"
-        qos_meter = f"qos_meter_{policy.traffic_type.value}"
-
-        try:
-            with open(faucet_path, "r") as file:
-                existing_config = yaml.safe_load(file) or {}
-        except FileNotFoundError:
-                existing_config = {}
-        
-        del existing_config["acls"][acl]
-        del existing_config["meters"][qos_meter]
-
-        acl_names = list(existing_config["acls"].keys())
-        acl_names.reverse()
-
-        existing_config["vlans"]["test"]["acls_in"] = acl_names
-        existing_config_wt_vlans = existing_config.copy()
-        del existing_config_wt_vlans["vlans"]
-            
-        with open(faucet_path, "w") as file:
-            file.write(yaml.dump(existing_config_wt_vlans, sort_keys=False, default_flow_style=False))
-            file.write("vlans:\n")
-            file.write("  test:\n")
-            file.write(f"    description: {existing_config['vlans']['test']['description']}\n")
-            file.write(f"    vid: {existing_config['vlans']['test']['vid']}\n")
-            file.write(f"    acls_in: {yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
-
-
     def process_alerts(self, alerts: dict) -> Success | Error:
         return Success.OperationOk
 
@@ -75,13 +41,17 @@ class FlowManager:
                    for p in self._policies):
             return Error.PolicyNotFound  
 
-        temp_policy = Policy(traffic_type=traffic_type,
-                             bandwidth=30)
+        policy = [p for p in self._policies
+                  if p.traffic_type == traffic_type][0]
 
-        self._policies = [p for p in self._policies
-                          if p.traffic_type != temp_policy.traffic_type]
+        self._policies.remove(policy)
 
-        self._delete_config(policy=temp_policy)
+        (_, did_config_update) = \
+                FaucetConfig.update_based_on(
+                        context={"policies": self._policies})
+
+        if not did_config_update:
+            return Error.ConfigWriteFailure
 
         return Success.OperationOk
 

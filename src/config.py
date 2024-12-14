@@ -88,7 +88,7 @@ class FaucetConfig(Config):
             meters[meter_name] = meter_config
 
             acl = {
-                "rule":{
+                "rule": {
                     "dl_type": '0x800',
                     "nw_proto": 17 \
                         if policy.traffic_type == PolicyTypes.VOIP \
@@ -119,11 +119,7 @@ class FaucetConfig(Config):
 
     @classmethod
     def get(cls) -> tuple[str, dict]:
-        faucet_path = Path(
-            cls._get_project_path(),
-            cls._FAUCET_PATH
-        )
-
+        faucet_path = Path(cls._get_project_path(), cls._FAUCET_PATH)
         return cls._read_from(path=faucet_path)
 
     @classmethod
@@ -136,19 +132,35 @@ class FaucetConfig(Config):
         rate_limit_config = cls._create_rate_limit_from(context=context)
 
         existing_config["acls"] = {
-            **existing_config.get("acls", {}),
+            "allow-all": [
+                {
+                    "rule": {
+                        "actions": {
+                            "allow": 1
+                        }
+                    }
+                }
+            ],
             **rate_limit_config["acls"],
         }
 
-        existing_config["meters"] = {
-            **existing_config.get("meters", {}),
-            **rate_limit_config["meters"],
+        existing_config["dps"] = {
+            **existing_config.get("dps", {})
         }
 
+        existing_config["meters"] = {
+            **rate_limit_config["meters"]
+        }
 
         acl_names = list(existing_config["acls"].keys())
         acl_names.reverse()
-        existing_config["vlans"]["test"]["acls_in"] = acl_names
+        existing_config["vlans"] = {
+            "test": {
+                "acls_in": acl_names,
+                "description": "vlan test",
+                "vid": 100
+            }
+        }
 
         faucet_path = Path(cls._get_project_path(), cls._FAUCET_PATH)
         with open(faucet_path, "w") as file:

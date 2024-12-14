@@ -154,11 +154,6 @@ class VirtNetBuilder():
         if not isinstance(validation_result, Success):
             return (validation_result, None)
 
-        translation_result = \
-            self._ts.translate_topo_to_controller_config()
-        if not isinstance(translation_result, Success):
-            return (translation_result, None)
-
         net = None
         build_result = None
         try:
