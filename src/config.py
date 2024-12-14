@@ -55,7 +55,7 @@ class Config:
 
 
 class FaucetConfig(Config):
-    _FAUCET_PATH = "dependencies/etc/faucet/faucet.yaml"
+    _FAUCET_PATH = "etc/faucet/faucet.yaml"
 
     @staticmethod
     def _create_rate_limit_from(context: dict) -> dict:

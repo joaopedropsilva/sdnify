@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
-PROJECT_ROOT=$(dirname "@0")
-FAUCET_LOG_DIR="$PROJECT_ROOT/dependencies/var/log/faucet"
+PROJECT_ROOT=$(dirname "$(realpath "$0")")
+FAUCET_LOG_DIR="$PROJECT_ROOT/var/log/faucet"
 
 echo [setup] Criando diretórios de logs do faucet
 
@@ -14,3 +14,4 @@ for file in "${files[@]}"; do
 done
 
 echo [setup] Criação finalizada com sucesso!
+
