@@ -1,9 +1,10 @@
 from pathlib import Path
 from enum import Enum
+from typing import List
 import json
 import yaml
 
-from src.policy import PolicyTypes
+from src.policy import PolicyTypes, Policy
 
 
 class _Messages(Enum):
@@ -54,26 +55,107 @@ class Config:
         return "", config
 
 
-class FaucetConfig(Config):
-    _FAUCET_PATH = "etc/faucet/faucet.yaml"
+class _Context:
+    def __init__(self, policies: List[Policy], redirect: List[dict]):
+        self._policies = policies
+        self._redirect = redirect
+        self._acls = {
+            "allow-all": [
+                {
+                    "rule": {
+                        "actions": {
+                            "allow": 1
+                        }
+                    }
+                }
+            ],
+        }
+        self._meters = {}
+        self._vlans = {
+            "test": {
+                "description": "vlan test",
+                "vid": 100
+            }
+        }
 
-    @staticmethod
-    def _create_rate_limit_from(context: dict) -> dict:
-        """
-        Gera a configuração completa de ACLs e Meters no formato do Faucet.
-        """
+    def _get_protocol_by(self, traffic_type: str) -> dict:
+        proto_number = 0
+        if traffic_type == PolicyTypes.VOIP.value:
+            proto_number = 17
+        else:
+            proto_number = 6
 
-        policies = context["policies"]
+        return {
+            **({"nw_proto": proto_number} \
+                    if proto_number != 0 \
+                    else {})
+        }
 
-        acls = {}
-        meters = {}
+    def _get_ports_by(self, traffic_type: str) -> dict:
+        return {
+            **({"udp_dst": 5001} \
+                if traffic_type == PolicyTypes.VOIP.value \
+                else {}),
+            **({"tcp_dst": 80} \
+               if traffic_type != PolicyTypes.VOIP.value \
+               else {}),
+            **({"tcp_dst": 21} \
+               if traffic_type == PolicyTypes.FTP.value \
+               else {}),
+        }
 
-        for policy in policies:
+    def _create_policies_acls(self) -> None:
+        for policy in self._policies:
+            rule = {
+                "rule": {
+                    "dl_type": '0x800',
+                    **self._get_protocol_by(
+                        traffic_type=policy.traffic_type.value),
+                    **self._get_ports_by(
+                        traffic_type=policy.traffic_type.value),
+                    "actions": {
+                        "allow": 1,
+                        "meter": f"qos_meter_{policy.traffic_type.value}"
+                    },
+                }
+            }
+
+            self._acls[policy.traffic_type.value] = [rule]
+
+    def _create_redirect_acls(self) -> None:
+        for config in self._redirect:
+            src = config["src_name"]
+            dst = config["dst_name"]
+            traffic_type = config["traffic_type"]
+
+            rule = {
+                "rule": {
+                    "dl_type": '0x800',
+                    **self._get_protocol_by(traffic_type=traffic_type),
+                    **self._get_ports_by(traffic_type=traffic_type),
+                    "actions": {
+                        "allow": 1,
+                        "output": {
+                            "set-fields": {
+                                "ipv4_dst": config["dest_ip"]
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            acl_name = f"{src}_{dst}"
+            if acl_name not in self._acls:
+                self._acls[acl_name] = []
+            self._acls[acl_name].append(rule)
+
+    def _create_meters(self) -> None:
+        for policy in self._policies:
             bandwidth = policy.bandwidth * 1000
 
-            meter_name = f"qos_meter_{policy.traffic_type.value}"
             meter_config = {
-                "meter_id": len(meters) + 1,
+                "meter_id": len(self._meters) + 1,
                 "entry": {
                     "flags": "KBPS",
                     "bands": [
@@ -85,37 +167,46 @@ class FaucetConfig(Config):
                 },
             }
 
-            meters[meter_name] = meter_config
+            self._meters[f"qos_meter_{policy.traffic_type.value}"] = \
+                    meter_config
 
-            acl = {
-                "rule": {
-                    "dl_type": '0x800',
-                    "nw_proto": 17 \
-                        if policy.traffic_type == PolicyTypes.VOIP \
-                        else 6,
-                    **({"udp_dst": 5001} \
-                        if policy.traffic_type == PolicyTypes.VOIP \
-                        else {}),
-                    **({"tcp_dst": 80} \
-                       if policy.traffic_type != PolicyTypes.VOIP \
-                       else {}),
-                    **({"tcp_dst": 21} \
-                       if policy.traffic_type == PolicyTypes.FTP \
-                       else {}),
-                    "actions": {
-                        "allow": 1,
-                        "meter": meter_name
-                    },
-                }
-            }
+    def _populate_vlans_acls_in(self) -> None:
+        acl_names = list(self._acls.keys())
+        acl_names.reverse()
 
-            acl_name = policy.traffic_type.value
-            if acl_name not in acls:
-                acls[acl_name] = []
+        self._vlans["test"]["acls_in"] = acl_names
 
-            acls[acl_name].append(acl)
+    def build_config(self) -> dict:
+        self._create_policies_acls()
+        self._create_redirect_acls()
+        self._create_meters()
+        self._populate_vlans_acls_in()
 
-        return {"acls": acls, "meters": meters}
+        return {
+            "acls": self._acls,
+            "meters": self._meters,
+            "vlans": self._vlans,
+        }
+
+
+class _ContextFactory:
+    @staticmethod
+    def create_from(context_data: dict) -> _Context:
+        try:
+            policies = context_data["policies"]
+        except KeyError:
+            policies = []
+
+        try:
+            redirect = context_data["redirect"]
+        except KeyError:
+            redirect = []
+
+        return _Context(policies=policies, redirect=redirect)
+
+
+class FaucetConfig(Config):
+    _FAUCET_PATH = "etc/faucet/faucet.yaml"
 
     @classmethod
     def get(cls) -> tuple[str, dict]:
@@ -123,48 +214,24 @@ class FaucetConfig(Config):
         return cls._read_from(path=faucet_path)
 
     @classmethod
-    def update_based_on(cls, context: dict) -> tuple[str, bool]:
+    def update_based_on(cls, context_data: dict) -> tuple[str, bool]:
         (err, existing_config) = cls.get()
 
         if err != "":
             return err, False
 
-        rate_limit_config = cls._create_rate_limit_from(context=context)
+        context = _ContextFactory.create_from(context_data=context_data)
 
-        existing_config["acls"] = {
-            "allow-all": [
-                {
-                    "rule": {
-                        "actions": {
-                            "allow": 1
-                        }
-                    }
-                }
-            ],
-            **rate_limit_config["acls"],
-        }
+        config = context.build_config()
 
-        existing_config["dps"] = {
+
+        config["dps"] = {
             **existing_config.get("dps", {})
-        }
-
-        existing_config["meters"] = {
-            **rate_limit_config["meters"]
-        }
-
-        acl_names = list(existing_config["acls"].keys())
-        acl_names.reverse()
-        existing_config["vlans"] = {
-            "test": {
-                "acls_in": acl_names,
-                "description": "vlan test",
-                "vid": 100
-            }
         }
 
         faucet_path = Path(cls._get_project_path(), cls._FAUCET_PATH)
         with open(faucet_path, "w") as file:
-            file.write(yaml.dump(existing_config, default_flow_style=False))
+            file.write(yaml.dump(config, default_flow_style=False))
 
         return "", True
 

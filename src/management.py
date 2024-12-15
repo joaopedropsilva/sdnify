@@ -29,7 +29,7 @@ class FlowManager:
 
         (_, did_config_update) = \
                 FaucetConfig.update_based_on(
-                        context={"policies": self._policies})
+                        context_data={"policies": self._policies})
 
         if not did_config_update:
             return Error.ConfigWriteFailure
@@ -48,12 +48,13 @@ class FlowManager:
 
         (_, did_config_update) = \
                 FaucetConfig.update_based_on(
-                        context={"policies": self._policies})
+                        context_data={"policies": self._policies})
 
         if not did_config_update:
             return Error.ConfigWriteFailure
 
         return Success.OperationOk
+
 
 class NetworkManager:
     def __init__(self):
