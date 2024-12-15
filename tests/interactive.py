@@ -21,9 +21,6 @@ class InteractiveTests:
             self._net = self._managers.virtnet.net
 
     def cli(self):
-        print("[test] Instanciar topologia definida na configuração com \
-                controlador faucet e invocar a CLI do Mininet")
-
         self._start_network_and_management()
 
         CLI(self._net)

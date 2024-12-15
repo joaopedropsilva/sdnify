@@ -5,6 +5,7 @@ from src.utils import File
 from src.data import Success, Error
 from src.policy import Policy, PolicyTypes
 from src.virtnet import VirtNet
+from src.config import Config
 
 
 class FlowManager:
@@ -17,8 +18,14 @@ class FlowManager:
     def process_alerts(self, alerts: dict) -> Success | Error:
         return Success.OperationOk
 
-    def redirect_traffic(self) -> Success | Error:
-        return Success.OperationOk
+    def redirect_traffic(self) -> tuple[str, bool]:
+        (err, config) = Config.get()
+
+        if err != "":
+            return err, False
+
+        return FaucetConfig \
+                .update_based_on(context_data={"redirect": config["redirect"]})
 
     def create(self, policy: Policy) -> Success | Error:
         policy_exist = len([p for p in self._policies \

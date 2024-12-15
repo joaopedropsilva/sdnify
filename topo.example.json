@@ -1,9 +1,9 @@
 {
-    "hosts": ["h1", "h2"],
+    "hosts": ["h1", "h2", "h3"],
     "switches": [
         {
             "id": "sw1",
-            "links": ["h1", "h2"]
+            "links": ["h1", "h2", "h3"]
         }
     ]
 }

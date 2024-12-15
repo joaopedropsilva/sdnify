@@ -79,11 +79,13 @@ class _Context:
         }
 
     def _get_protocol_by(self, traffic_type: str) -> dict:
-        proto_number = 0
         if traffic_type == PolicyTypes.VOIP.value:
             proto_number = 17
-        else:
+        elif traffic_type != PolicyTypes.VOIP.value \
+                and traffic_type != "all":
             proto_number = 6
+        else:
+            proto_number = 0
 
         return {
             **({"nw_proto": proto_number} \
@@ -97,7 +99,7 @@ class _Context:
                 if traffic_type == PolicyTypes.VOIP.value \
                 else {}),
             **({"tcp_dst": 80} \
-               if traffic_type != PolicyTypes.VOIP.value \
+               if traffic_type == PolicyTypes.HTTP.value \
                else {}),
             **({"tcp_dst": 21} \
                if traffic_type == PolicyTypes.FTP.value \
@@ -136,16 +138,17 @@ class _Context:
                     "actions": {
                         "allow": 1,
                         "output": {
-                            "set-fields": {
-                                "ipv4_dst": config["dest_ip"]
-                            }
+                            "set_fields": [
+                                {
+                                    "ipv4_dst": config["dst_ip"]
+                                }
+                            ]
                         }
                     }
                 }
             }
 
-
-            acl_name = f"{src}_{dst}"
+            acl_name = f"{src}_{dst}_{traffic_type}"
             if acl_name not in self._acls:
                 self._acls[acl_name] = []
             self._acls[acl_name].append(rule)
@@ -185,7 +188,7 @@ class _Context:
         return {
             "acls": self._acls,
             "meters": self._meters,
-            "vlans": self._vlans,
+            "vlans": self._vlans
         }
 
 
@@ -223,7 +226,6 @@ class FaucetConfig(Config):
         context = _ContextFactory.create_from(context_data=context_data)
 
         config = context.build_config()
-
 
         config["dps"] = {
             **existing_config.get("dps", {})
