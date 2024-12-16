@@ -41,7 +41,7 @@ def virtnet_status() -> Response:
     return Response(response=json.dumps({"status": manager.network_already_up}),
                     status=200)
 
-@app.route("/controller/manage_policy", methods=["POST", "DELETE"])
+@app.route("/manager/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
     try:
         data = request.json
@@ -94,7 +94,7 @@ def manage_policy() -> Response:
     except Exception:
         return Response(status=500)
     
-@app.route("/controller/capture_alerts", methods=["POST"])
+@app.route("/manager/capture_alerts", methods=["POST"])
 def capture_alerts() -> Response:
     try:
         alerts_data = request.json

@@ -3,7 +3,7 @@ from flask import Response
 from subprocess import run
 import requests
 
-from src.utils import Display
+from src.utils import Display, Manual
 
 
 class Actions:
@@ -38,20 +38,19 @@ class Actions:
     @classmethod
     @_format_api_output_to_stdout
     def create_policy(cls, traffic_type: str, bandwidth: int) -> Response:
-        data = {"traffic_type": traffic_type, "bandwidth": bandwidth}
-        return requests.post(f"{cls._API_URL}/controller/manage_policy",
-                             json=data)
+       data = {"traffic_type": traffic_type, "bandwidth": bandwidth}
+       return requests.post(f"{cls._API_URL}/manager/manage_policy", json=data)
 
     @classmethod
     @_format_api_output_to_stdout
     def remove_policy(cls, traffic_type: str) -> Response:
         data = {"traffic_type": traffic_type}
-        return requests.delete(f"{cls._API_URL}/controller/manage_policy",
+        return requests.delete(f"{cls._API_URL}/manager/manage_policy",
                                json=data)
 
     @staticmethod
     def show_manual() -> None:
-        pass
+        Manual.get()
 
     @staticmethod
     def run_tests(interactive: bool, test_file: str) -> None:
@@ -128,6 +127,7 @@ class Dispatcher:
             action_map[args.action]()
         else:
             print("Ação desconhecida. Use --help para ver as opções.")
+
 
 if __name__ == "__main__":
     Dispatcher.dispatch()

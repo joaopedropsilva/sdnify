@@ -1,10 +1,27 @@
 {
-    "hosts": ["h1", "h2", "h3"],
-    "switches": [
+    "dps": [
         {
-            "id": "sw1",
-            "links": ["h1", "h2", "h3"]
+            "name": "sw1",
+            "hosts": [
+                {
+                    "name": "h1",
+                    "vlan": "test"
+                },
+                {
+                    "name": "h2",
+                    "vlan": "test"
+                },
+                {
+                    "name": "h3",
+                    "vlan": "test"
+                }
+            ]
+        }
+    ],
+    "vlans": [
+        {
+            "name": "test",
+            "description": "test vlan"
         }
     ]
 }
-

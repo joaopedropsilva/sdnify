@@ -80,28 +80,18 @@ class File:
 
         with open(path, "w") as file:
             dump(config, file, indent=4)
-            
 
 
 class Manual:
-    @staticmethod
-    def get_manual() -> None:
-        """
-            Retorna o manual do controlador completo
-        """
-        pass
+    _DOC_FILE = "README.md"
 
     @staticmethod
-    def get_rules() -> None:
-        """
-            Retorna as regras definidas no manual do controlador 
-        """
-        pass
+    def _get_project_path() -> Path:
+        src_path = Path(__file__).parent.resolve()
+        return Path(src_path).parent.resolve()
 
-    @staticmethod
-    def get_commands() -> None:
-        """
-            Retorna os comandos definidos no manual do controlador
-        """
-        pass
+    @classmethod
+    def get(cls) -> None:
+        with open(Path(cls._get_project_path(), cls._DOC_FILE), "r") as file:
+            print(file.read())
 
