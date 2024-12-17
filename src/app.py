@@ -13,15 +13,14 @@ manager = VirtNetManager()
 @app.route("/virtnet/start", methods=["POST"])
 def virtnet_start() -> Response:
     if manager.network_already_up:
-        return Response(response=Warning.NetworkAlreadyUp, status=409)
+        return Response(response="Rede virtual já instanciada.", status=409)
 
-    generation_result = manager.virtnet.generate()
+    (err, is_network_up) = manager.virtnet.generate()
 
-    status = 201
-    if isinstance(generation_result, Error):
-        status = 500
+    if not is_network_up:
+        return Response(response=err, status=500)
 
-    return Response(response=generation_result.value, status=status)
+    return Response(response="Rede virtual criada com sucesso.", status=201)
 
 @app.route("/virtnet/destroy", methods=["POST"])
 def virtnet_destroy() -> Response:

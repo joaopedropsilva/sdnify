@@ -8,7 +8,6 @@ class Warning(Enum):
 
 class Success(Enum):
     OperationOk = "Operação bem sucedida."
-    NetworkBuildOk = "Rede virtual instanciada com sucesso."
     NetworkDestructionOk = "Rede virtual destruída com sucesso."
     PolicyCreationOk = "Política de classificação criada com sucesso."
     PolicyDeletionOk = "Política de tráfego removida com sucesso."

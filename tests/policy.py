@@ -139,7 +139,10 @@ if __name__ == "__main__":
     if File.get_config()["limit_bandwidth"]:
         tests.create_test_policies()
 
-    tests.manager.virtnet.generate()
+    (err, is_network_up) = tests.manager.virtnet.generate()
+    if err != "":
+        raise Exception(err)
+
     tests.net = tests.manager.virtnet.net
 
     tests.simulate_http_traffic()

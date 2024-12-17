@@ -52,8 +52,8 @@ Para trabalhar com redes virtuais é necessário definir a topologia da rede des
 
 ```json
 {
-    "dps": ["DP_OBJECT", ...],
-    "vlans": ["VLAN_OBJECT", ...]
+    "dps": [DP_OBJECT", ...],
+    "vlans": [VLAN_OBJECT, ...]
 }
 ```
 
@@ -134,8 +134,8 @@ Payload da requisição:
 ```json
 {
     "data": {
-        "traffic_type": "TRAFFIC_TYPE",
-        "bandwidth": "BANDWIDTH"
+        "traffic_type": TRAFFIC_TYPE,
+        "bandwidth": BANDWIDTH
     }
 }
 ```
@@ -148,7 +148,7 @@ Payload da requisição:
 ```json
 {
     "data": {
-        "traffic_type": "TRAFFIC_TYPE"
+        "traffic_type": TRAFFIC_TYPE
     }
 }
 ```

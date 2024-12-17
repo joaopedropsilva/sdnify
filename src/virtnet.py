@@ -3,198 +3,190 @@ from mininet.clean import Cleanup
 from mininet.net import Mininet
 from mininet.topo import Topo
 from mininet.net import Mininet
-from pathlib import Path
-import yaml
+import json
 
-from src.utils import File
+from src.config import Config
 from src.data import Error, Success
 
 
 class CustomTopo(Topo):
     def build(self, topo_schema: dict) -> None:
-        for host in topo_schema["hosts"]:
-            self.addHost(host)
+        for dp in topo_schema["dps"]:
+            dp_name = dp["name"]
 
-        for switch in topo_schema["switches"]:
-            id = switch["id"]
-            links = switch["links"]
+            self.addSwitch(dp_name)
 
-            self.addSwitch(id)
-
-            for host in links:
-                self.addLink(host, id)
+            for host in dp["hosts"]:
+                self.addHost(host)
+                self.addLink(host, dp_name)
 
 
 class _TopoSchema:
-    _SWITCHES_KEY = "switches"
-    _HOSTS_KEY = "hosts"
-    _ID_KEY = "id"
-    _LINKS_KEY = "links"
+    def __init__(self, schema: dict):
+        self._schema = schema
 
-    def __init__(self, topo_schema_path: str):
-        self._schema = File.read_json_from(filepath=topo_schema_path)
+    def _validate_dps(self) -> tuple[str, bool]:
+        if "dps" not in self._schema:
+            return ("\"dps\" não encontrado no arquivo de topologia.", False)
 
-    @property
-    def schema(self) -> dict:
-        return self._schema
+        dps = self._schema["dps"]
 
-    def validate(self)-> Success | Error:
-        if not isinstance(self._schema[self._HOSTS_KEY], list):
-            return Error.HostsKeyWrongTypeInTopoSchema
-        
-        for host in self._schema[self._HOSTS_KEY]:
-            if not isinstance(host, str):
-                return Error.HostsKeyWrongValueInTopoSchema
-        
-        if not isinstance(self._schema[self._SWITCHES_KEY], list):
-            return Error.SwitchesKeyWrongTypeInTopoSchema
-        
-        for switch in self._schema[self._SWITCHES_KEY]:
-            if not isinstance(switch, dict):
-                return Error.SwitchesKeyWrongValueInTopoSchema
+        if not isinstance(dps, list):
+            return ("\"dps\" deve ser do tipo \"list\"", False)
 
-            if self._ID_KEY not in switch \
-                or not isinstance(switch[self._ID_KEY], str):
-                return Error.SwitchObjectWithNoIdInTopoSchema
+        for dp in dps:
+            if not isinstance(dp, dict):
+                return ("Tipo não permitido para objeto em \"dps\"", False)
 
-            if self._LINKS_KEY not in switch \
-                or not isinstance(switch[self._LINKS_KEY], list):
-                return Error.SwitchObjectWithNoLinksInTopoSchema
-            
-            for link in switch[self._LINKS_KEY]:
-                if not isinstance(link, str):
-                    return Error.LinksWrongValueInTopoSchema
+            if "name" not in dp:
+                return("Campo \"name\" ausente em objeto de \"dps\"", False)
 
-        return Success.OperationOk
+            try:
+                hosts = dp["hosts"]
+            except KeyError:
+                return("Campo \"hosts\" ausente em objeto de \"dps\"", False)
 
-    def translate_topo_to_controller_config(self) -> Success | Error:
-        faucet_path = Path(File.get_project_path(),
-                           "dependencies/etc/faucet/faucet.yaml")
+            if not isinstance(hosts, list):
+                return ("\"hosts\" deve ser do tipo \"list\"", False)
+
+            for host in hosts:
+                if "name" not in host:
+                    return("Campo \"name\" ausente em objeto de \"hosts\"",
+                           False)
+
+                if not isinstance(host["name"], str):
+                    return("Tipo inválido em \"name\" de objeto em \"hosts\"",
+                           False)
+
+                if "vlan" not in host:
+                    return("Campo \"vlan\" ausente em objeto de \"hosts\"",
+                           False)
+
+                if not isinstance(host["vlan"], str):
+                    return("Tipo inválido em \"vlan\" de objeto em \"hosts\"",
+                           False)
+
+        return ("", True)
+
+    def _validate_vlans(self) -> tuple[str, bool]:
+        if "vlans" not in self._schema:
+            return ("\"vlans\" não encontrado no arquivo de topologia.", False)
+
+        vlans = self._schema["vlans"]
+
+        if not isinstance(vlans, list):
+            return ("\"vlans\" deve ser do tipo \"list\"", False)
+
+        for vlan in vlans:
+            if not isinstance(vlan, dict):
+                return ("Tipo não permitido para objeto em \"vlans\"", False)
+
+            if "name" not in vlan:
+                return("Campo \"name\" ausente em objeto de \"vlans\"", False)
+
+            if not isinstance(vlan["name"], str):
+                return("Tipo inválido em \"name\" de objeto em \"vlans\"",
+                       False)
+
+            if "description" not in vlan:
+                return("Campo \"description\" ausente em objeto de \"vlans\"",
+                       False)
+
+            if not isinstance(vlan["description"], str):
+                return("Tipo inválido em \"description\" de objeto em \"vlans\"",
+                       False)
+
+        return ("", True)
+
+    def validate(self) -> tuple[str, bool]:
+        (err_dps, is_dps_valid) = self._validate_dps()
+        if not is_dps_valid:
+            return (err_dps, False)
+
+        (err_vlans, is_vlans_valid) = self._validate_vlans()
+        if not is_vlans_valid:
+            return (err_vlans, False)
+
+        return ("", True)
+
+
+class _TopoSchemaFactory:
+    @staticmethod
+    def create() -> tuple[str, _TopoSchema | None]:
+        (err, config) = Config.get()
+
+        if err != "":
+            return (err, None)
 
         try:
-            with open(faucet_path, "r") as file:
-                existing_config = yaml.safe_load(file)
-        except FileNotFoundError:
-            return Error.ControllerConfigNotFound
+            topo_schema_path = config["topo_schema_path"]
+        except KeyError:
+            return ("Caminho para arquivo de topologia não encontrado.", None)
 
-        dps = {}
-        for dp_number, switch in enumerate(self._schema[self._SWITCHES_KEY],
-                                           start=1):
-            id = switch[self._ID_KEY]
-            hosts = switch[self._LINKS_KEY]
-
-            interfaces = {}
-            for opf_port, host in enumerate(hosts, start=1):
-                interfaces[opf_port] = {
-                    "name": host,
-                    "description": f"virtualized {host}",
-                    "native_vlan": f"test"
-                }
-
-            dps[id] = {
-                "dp_id": dp_number,
-                "hardware": "Open vSwitch",
-                "interfaces": interfaces
-            }
-
-        existing_config["dps"] = dps
-
+        topo_schema = dict()
         try:
-            acl_names = list(existing_config["acls"].keys())
-            acl_names.reverse()
+            with open(topo_schema_path, "r") as file:
+                json.load(file)
+        except FileNotFoundError as err:
+            return (str(err), None)
+        except json.JSONDecodeError as err:
+            return (str(err), None)
 
-            existing_config["vlans"]["test"]["acls_in"] = acl_names
-            existing_config_wt_vlans = existing_config.copy()
-            del existing_config_wt_vlans["vlans"]
-
-            with open(faucet_path, "w") as file:
-                file.write(yaml.dump(existing_config_wt_vlans,
-                                     sort_keys=False,
-                                     default_flow_style=False))
-                file.write("vlans:\n")
-                file.write("  test:\n")
-                file.write(f"    description: " \
-                           f"{existing_config['vlans']['test']['description']}\n")
-                file.write(f"    vid: " \
-                           f"{existing_config['vlans']['test']['vid']}\n")
-                file.write(f"    acls_in: " \
-                           f"{yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
-        except Exception:
-            return Error.ConfigWriteFailure
-        
-        return Success.ConfigWriteOk
+        return "", _TopoSchema(schema=topo_schema)
 
 
-class VirtNetBuilder():
-    _DEFAULT_CONTROLLER_NAME = "c0"
-    _DEFAULT_CONTROLLER_IP = "faucet"
-    _DEFAULT_OPF_PORT = 6653
+class _VirtNetFactory():
+    _OPF_PORT = 6653
 
-    def __init__(self, topo_schema_path: str, controller_options: dict = {}):
-        self._ts = _TopoSchema(topo_schema_path=topo_schema_path)
-        self._controller_name = controller_options["name"] \
-                                    if len(controller_options) \
-                                    else self._DEFAULT_CONTROLLER_NAME
-        self._controller_ip = controller_options["ip"] \
-                                   if len(controller_options) \
-                                    else self._DEFAULT_CONTROLLER_IP
-        self._opf_port = controller_options["opf_port"] \
-                                    if len(controller_options) \
-                                    else self._DEFAULT_OPF_PORT
+    @classmethod
+    def create(cls) -> tuple[str, Mininet | None]:
+        (err_creation, topo_schema) = _TopoSchemaFactory.create()
+        if err_creation != "" or topo_schema is None:
+            return (err_creation, None)
 
-    def _create_controller(self) -> RemoteController:
-        return RemoteController(
-            name=self._controller_name,
-            ip=self._controller_ip,
-            port=self._opf_port
-        )
+        (err_validation, is_valid) = topo_schema.validate()
 
-    def build_network(self) -> tuple[Success | Error, Mininet | None]:
-        validation_result = self._ts.validate()
-        if not isinstance(validation_result, Success):
-            return (validation_result, None)
+        if not is_valid:
+            return (err_validation, None)
 
         net = None
-        build_result = None
         try:
-            net = Mininet(topo=CustomTopo(topo_schema=self._ts.schema))
+            net = Mininet(topo=CustomTopo(topo_schema=topo_schema))
 
             net.addController(name="c1",
                               controller=RemoteController,
                               ip="faucet",
-                              port=6653)
+                              port=cls._OPF_PORT)
 
             net.addController(name="c2",
                               controller=RemoteController,
                               ip="gauge",
-                              port=6653)
+                              port=cls._OPF_PORT)
 
-            build_result = Success.NetworkBuildOk
+            return ("", net)
         except Exception:
-            build_result = Error.NetworkBuildFailed
-
-        return (build_result, net)
+            return ("Falha ao instanciar a rede virtual.", None)
 
 
 class VirtNet:
     def __init__(self):
-        topo_schema_path = File.get_config()["topo_schema_path"]
-        self._builder = VirtNetBuilder(topo_schema_path=topo_schema_path)
         self._net = None
 
     @property
     def net(self) -> Mininet | None:
         return self._net
 
-    def generate(self) -> Success | Error:
-        (build_result, net) = self._builder.build_network()
+    def generate(self) -> tuple[str, bool]:
+        (err, net) = _VirtNetFactory.create()
 
-        if isinstance(build_result, Success):
-            if net is not None:
-                self._net = net
-                self._net.start()
+        if err != "":
+            return (err, False)
 
-        return build_result
+        if net is not None:
+            self._net = net
+            self._net.start()
+
+        return ("", True)
 
     def destroy(self) -> Success | Error:
         operation_result = Success.NetworkDestructionOk
@@ -209,7 +201,4 @@ class VirtNet:
         Cleanup()
 
         return operation_result
-
-    def stats(self) -> None:
-        return
 
