@@ -19,6 +19,12 @@ class NetworkManager:
     def context(self) -> Context:
         return self._context
 
+    def create_network(self) -> tuple[str, bool]:
+        return ("Não implementado.", False)
+
+    def destroy_network(self) -> tuple[str, bool]:
+        return ("Não implementado.", False)
+
     def process_alerts(self, alerts: dict) -> tuple[str, bool]:
         return ("", True)
 
@@ -59,12 +65,31 @@ class VirtNetManager(NetworkManager):
         self._virtnet = VirtNet(topo_schema=self._topology.schema)
 
     @property
-    def virtnet(self) -> VirtNet:
-        return self._virtnet
-
-    @property
     def network_already_up(self) -> bool:
         return True if self._virtnet.net is not None else False
+
+    def create_network(self) -> tuple[str, bool]:
+        (err_generation, did_generate) = self._virtnet.generate()
+        if not did_generate:
+            return (err_generation, False)
+
+        (err_config, did_update) = \
+                FaucetConfig.update_based_on(context=self._context)
+        if not did_update:
+            return (err_config, False)
+
+        (err_start, did_start) = self._virtnet.start()
+        if not did_start:
+            return (err_start, False)
+
+        return ("", True)
+
+    def destroy_network(self) -> tuple[str, bool]:
+        (err_destruction, did_destroy) = self._virtnet.destroy()
+        if not did_destroy:
+            return (err_destruction, False)
+
+        return ("", True)
 
 
 class VirtNetManagerFactory:

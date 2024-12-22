@@ -3,6 +3,7 @@ from mininet.clean import Cleanup
 from mininet.net import Mininet
 from mininet.topo import Topo
 from mininet.net import Mininet
+from src.config import FaucetConfig
 
 
 class _MininetTopoBuilder(Topo):
@@ -57,8 +58,19 @@ class VirtNet:
             return (err_mininet, False)
 
         self._net = net
-        self._net.start()
 
+        return ("", True)
+
+    def start(self) -> tuple[str, bool]:
+        if self._net is None:
+            return ("Falha ao iniciar a rede virtual: rede virtual não instanciada",
+                    False)
+        try:
+            self._net.start()
+        except Exception as err:
+            return (f"Falha ao iniciar a rede virtual: {repr(err)}",
+                    False)
+        
         return ("", True)
 
     def destroy(self) -> tuple[str, bool]:

@@ -1,17 +1,1 @@
-dps:
-  sw1:
-    dp_id: 1
-    hardware: Open vSwitch
-    interfaces:
-      1:
-        description: virtualized h1
-        name: h1
-        native_vlan: test
-      2:
-        description: virtualized h2
-        name: h2
-        native_vlan: test
-      3:
-        description: virtualized h3
-        name: h3
-        native_vlan: test
+---
