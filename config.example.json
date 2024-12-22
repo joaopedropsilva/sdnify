@@ -1,12 +1,6 @@
 {
     "topo_schema_path": "./topo.example.json",
     "max_bandwidth": 100,
-    "limit_bandwidth": false,
-    "bandwidths": {
-        "http": 30,
-        "ftp": 10,
-        "voip": 60
-    },
     "redirect": [
         {
             "src_name": "h1",

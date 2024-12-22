@@ -1,12 +1,10 @@
 from mininet.node import Host
-
-from src.management import VirtNetManager
-from src.data import Error
+from src.management import VirtNetManagerFactory
 from src.policy import Policy, PolicyTypes
-from src.utils import Display, File
+from src.utils import Display
 
 
-class CommandGenerator:
+class _IperfGenerator:
     def __init__(self,
                  port: int,
                  transport: str,
@@ -36,20 +34,35 @@ class CommandGenerator:
 
 class PolicyTests:
     def __init__(self):
-        self.manager = VirtNetManager()
-        self.net = self.manager.virtnet.net
+        (err_manager, manager) = VirtNetManagerFactory.create()
+        if manager is None:
+            raise Exception(err_manager)
+
+        self._manager = manager
         self._display = Display(prefix="tests")
 
+    def pre_test_context(self) -> None:
+        if not self._manager.network_already_up:
+            (err_generation, is_network_up) = self._manager.virtnet.generate()
+            if not is_network_up:
+                raise Exception(err_generation)
+
+    def post_test_context(self) -> None:
+        if self._manager.network_already_up:
+            (err_destruction, did_destroy) = self._manager.virtnet.destroy()
+            if not did_destroy:
+                raise Exception(err_destruction)
+
     def _issue_commands(self,
-                        command_gen: CommandGenerator,
+                        iperf_gen: _IperfGenerator,
                         hosts: tuple[Host, Host]) -> None:
         (h1, h2) = hosts
 
-        host_cmd = command_gen.generate(command="iperf_as_host")
+        host_cmd = iperf_gen.generate(command="iperf_as_host")
         self._display.command(host_cmd)
         h1.cmd(host_cmd)
 
-        client_cmd = command_gen.generate(command="iperf_as_client")
+        client_cmd = iperf_gen.generate(command="iperf_as_client")
         self._display.command(client_cmd)
         with h2.popen(client_cmd) as process:
             for line in process.stdout:
@@ -63,11 +76,10 @@ class PolicyTests:
     def create_test_policies(self) -> None:
         self._display.title("Criando políticas de classificação de pacote")
 
-        bandwidths = File.get_config()["bandwidths"]
         types_and_bandwidths = [
-            (PolicyTypes.HTTP, bandwidths["http"]),
-            (PolicyTypes.FTP, bandwidths["ftp"]),
-            (PolicyTypes.VOIP, bandwidths["voip"])
+            (PolicyTypes.HTTP, 30),
+            (PolicyTypes.FTP, 10),
+            (PolicyTypes.VOIP, 60)
          ]
 
         for t, b in types_and_bandwidths:
@@ -77,77 +89,78 @@ class PolicyTests:
                                   f"{policy.traffic_type.value} " \
                                   f"({policy.bandwidth} Mbps)")
 
-            creation_result = self.manager.flow.create(policy=policy)
-
-            if isinstance(creation_result, Error):
-                raise Exception(creation_result.value)
+            (err_creation, did_create) = self._manager.create(policy=policy)
+            if not did_create:
+                raise Exception(err_creation)
 
         self._display.message(f"Políticas criadas com sucesso!")
 
     def simulate_http_traffic(self) -> None:
         self._display.title("Simulando tráfego http")
 
-        if self.net is None:
-            return
+        assert self._manager.virtnet.net is not None, \
+        self._display.message("rede virtual não instanciada!")
 
-        h1, h2 = self.net.get("h1", "h2")
+        h1, h2 = self._manager.virtnet.net.get("h1", "h2")
 
-        command_gen = CommandGenerator(port=80,
-                                       transport="tcp",
-                                       host_ip=h1.IP(),
-                                       bandwidth="100m")
+        iperf_generator = _IperfGenerator(port=80,
+                                          transport="tcp",
+                                          host_ip=h1.IP(),
+                                          bandwidth="100m")
 
-        self._issue_commands(command_gen=command_gen,
+        self._issue_commands(iperf_gen=iperf_generator,
                              hosts=(h1, h2))
 
     def simulate_ftp_traffic(self) -> None:
         self._display.title("Simulando tráfego ftp")
 
-        if self.net is None:
-            return
+        assert self._manager.virtnet.net is not None, \
+        self._display.message("rede virtual não instanciada!")
 
-        h1, h2 = self.net.get("h1", "h2")
+        h1, h2 = self._manager.virtnet.net.get("h1", "h2")
 
-        command_gen = CommandGenerator(port=21,
-                                       transport="tcp",
-                                       host_ip=h1.IP(),
-                                       bandwidth="100m")
+        iperf_generator = _IperfGenerator(port=21,
+                                          transport="tcp",
+                                          host_ip=h1.IP(),
+                                          bandwidth="100m")
 
-        self._issue_commands(command_gen=command_gen,
+        self._issue_commands(iperf_gen=iperf_generator,
                              hosts=(h1, h2))
 
     def simulate_voip_traffic(self) -> None:
         self._display.title("Simulando tráfego voip")
 
-        if self.net is None:
-            return
+        assert self._manager.virtnet.net is not None, \
+        self._display.message("rede virtual não instanciada!")
 
-        h1, h2 = self.net.get("h1", "h2")
 
-        command_gen = CommandGenerator(port=5001,
-                                       transport="udp",
-                                       host_ip=h1.IP(),
-                                       bandwidth="100m")
+        h1, h2 = self._manager.virtnet.net.get("h1", "h2")
 
-        self._issue_commands(command_gen=command_gen,
+        iperf_generator = _IperfGenerator(port=5001,
+                                          transport="udp",
+                                          host_ip=h1.IP(),
+                                          bandwidth="100m")
+
+        self._issue_commands(iperf_gen=iperf_generator,
                              hosts=(h1, h2))
 
 
 if __name__ == "__main__":
     tests = PolicyTests()
 
-    if File.get_config()["limit_bandwidth"]:
-        tests.create_test_policies()
-
-    (err, is_network_up) = tests.manager.virtnet.generate()
-    if err != "":
-        raise Exception(err)
-
-    tests.net = tests.manager.virtnet.net
+    tests.pre_test_context()
 
     tests.simulate_http_traffic()
     tests.simulate_ftp_traffic()
     tests.simulate_voip_traffic()
 
-    tests.manager.virtnet.destroy()
+    tests.post_test_context()
+    tests.pre_test_context()
+
+    tests.create_test_policies()
+    tests.simulate_http_traffic()
+    tests.simulate_ftp_traffic()
+    tests.simulate_voip_traffic()
+
+    tests.post_test_context()
 

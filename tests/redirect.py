@@ -13,9 +13,8 @@ class RedirectTests:
     def create_redirection(self) -> None:
         self._display.title("Criando regras de redirecionamento")
 
-        (err, _) = self.manager.flow.redirect_traffic()
-
-        if err != "":
+        (err, was_redirection_created) = manager.redirect_traffic()
+        if not was_redirection_created:
             raise Exception(err)
 
         self._display.message(f"Redirecionamento criado com sucesso!")
