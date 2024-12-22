@@ -23,7 +23,7 @@ class Actions:
     @classmethod
     @_format_api_output_to_stdout
     def virtnet_create(cls) -> Response:
-        return requests.post(f"{cls._API_URL}/virtnet/start")
+        return requests.post(f"{cls._API_URL}/virtnet/create")
 
     @classmethod
     @_format_api_output_to_stdout

@@ -1,4 +1,4 @@
-from config import Config
+from src.config import Config
 from flask import Flask, Response, request
 import json
 from src.management import VirtNetManagerFactory
@@ -11,10 +11,11 @@ app = Flask(__name__)
 if manager is None:
     raise Exception(err_manager)
 
-@app.route("/virtnet/start", methods=["POST"])
-def virtnet_start() -> Response:
+@app.route("/virtnet/create", methods=["POST"])
+def virtnet_create() -> Response:
     if manager is None:
         return Response(status=500)
+    print(manager)
 
     if manager.network_already_up:
         return Response(response="Rede virtual já instanciada.", status=409)
@@ -39,7 +40,7 @@ def virtnet_destroy() -> Response:
         return Response(response=err_destruction, status=500)
 
     return Response(response="Rede virtual destruída com sucesso.",
-                    status=status)
+                    status=200)
 
 @app.route("/virtnet/status")
 def virtnet_status() -> Response:

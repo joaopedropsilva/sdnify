@@ -135,9 +135,9 @@ class Context:
         return interfaces
 
     def _create_dps(self) -> None:
-        for dp in self._topo_schema["dps"]:
+        for index, dp in enumerate(self._topo_schema["dps"], start=1):
             dp_config = {
-                "dp_id": len(self._dps) + 1,
+                "dp_id": index,
                 "hardware": "Open vSwitch",
                 "interfaces": self._map_all_hosts_from(dp=dp)
             }
@@ -145,11 +145,11 @@ class Context:
             self._dps[dp["name"]] = dp_config
 
     def _create_meters(self) -> None:
-        for policy in self._policies:
+        for index, policy in enumerate(self._policies, start=1):
             bandwidth = policy.bandwidth * 1000
 
             meter_config = {
-                "meter_id": len(self._meters) + 1,
+                "meter_id": index,
                 "entry": {
                     "flags": "KBPS",
                     "bands": [

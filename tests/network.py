@@ -16,6 +16,11 @@ class VirtNetTests:
         self._manager = manager
         self._display = Display(prefix="tests")
 
+    def post_test(self) -> None:
+        (err_destruction, did_destroy) = self._manager.virtnet.destroy()
+        if not did_destroy:
+            raise Exception(err_destruction)
+
     def ping_all(self) -> None:
         self._display.title("Pingando todos os hosts criados na rede virtual")
 
@@ -24,11 +29,11 @@ class VirtNetTests:
 
             self._manager.virtnet.net.start()
             self._manager.virtnet.net.pingAll()
-            self._manager.virtnet.net.stop()
 
 
 if __name__ == "__main__":
     tests = VirtNetTests()
 
     tests.ping_all()
+    tests.post_test()
 

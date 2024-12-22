@@ -13,18 +13,18 @@ class _MininetTopoBuilder(Topo):
             self.addSwitch(dp_name)
 
             for host in dp["hosts"]:
-                self.addHost(host)
-                self.addLink(host, dp_name)
+                self.addHost(host["name"])
+                self.addLink(host["name"], dp_name)
 
 
-class _VirtNetFactory():
+class _MininetFactory():
     _OPF_PORT = 6653
 
     @classmethod
     def create_using(cls, topo_schema: dict) -> tuple[str, Mininet | None]:
         net = None
         try:
-            net = Mininet(topo=_MininetTopoBuilder(topo_schema=topo_schema))
+            net = Mininet(topo=_MininetTopoBuilder(topo_schema))
 
             net.addController(name="c1",
                               controller=RemoteController,
@@ -37,8 +37,8 @@ class _VirtNetFactory():
                               port=cls._OPF_PORT)
 
             return ("", net)
-        except Exception:
-            return ("Falha ao instanciar a rede virtual.", None)
+        except Exception as err:
+            return (f"Falha ao instanciar a rede virtual: {repr(err)}", None)
 
 
 class VirtNet:
@@ -51,13 +51,13 @@ class VirtNet:
         return self._net
 
     def generate(self) -> tuple[str, bool]:
-        (err, net) = _VirtNetFactory.create_using(topo_schema=self._topo_schema)
-        if err != "":
-            return (err, False)
+        (err_mininet, net) = \
+                _MininetFactory.create_using(topo_schema=self._topo_schema)
+        if net is None:
+            return (err_mininet, False)
 
-        if net is not None:
-            self._net = net
-            self._net.start()
+        self._net = net
+        self._net.start()
 
         return ("", True)
 
@@ -66,8 +66,8 @@ class VirtNet:
             try:
                 self._net.stop()
                 self._net = None
-            except Exception:
-                return ("Falha ao destruir a rede virtual.", False)
+            except Exception as err:
+                return (f"Falha ao destruir a rede virtual: {repr(err)}", False)
 
         Cleanup()
 

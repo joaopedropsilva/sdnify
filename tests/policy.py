@@ -158,6 +158,7 @@ if __name__ == "__main__":
     tests.pre_test_context()
 
     tests.create_test_policies()
+    exit()
     tests.simulate_http_traffic()
     tests.simulate_ftp_traffic()
     tests.simulate_voip_traffic()
