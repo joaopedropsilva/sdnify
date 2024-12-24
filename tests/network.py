@@ -1,6 +1,5 @@
-from src.utils import Display
 from src.management import VirtNetManagerFactory
-
+from src.test_logger import TestLogger
 
 class VirtNetTests:
     def __init__(self):
@@ -13,7 +12,6 @@ class VirtNetTests:
             raise Exception(err_creation)
 
         self._manager = manager
-        self._display = Display(prefix="tests")
 
     def post_test(self) -> None:
         (err_destruction, did_destroy) = self._manager.destroy_network()
@@ -21,7 +19,7 @@ class VirtNetTests:
             raise Exception(err_destruction)
 
     def ping_all(self) -> None:
-        self._display.title("Pingando todos os hosts criados na rede virtual")
+        TestLogger.message("Pingando todos os hosts criados na rede virtual")
         if self._manager.testing_features is None:
             return
 
@@ -31,6 +29,7 @@ class VirtNetTests:
 if __name__ == "__main__":
     tests = VirtNetTests()
 
+    TestLogger.title("testes de instanciação da rede")
     tests.ping_all()
     tests.post_test()
 

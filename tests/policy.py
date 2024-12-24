@@ -39,7 +39,7 @@ class PolicyTests:
                 raise Exception(err_destruction)
 
     def create_test_policies(self) -> None:
-        testlogger.message("criando políticas de classificação de pacote")
+        TestLogger.message("criando políticas de classificação de pacote")
 
         types_and_bandwidths = [
             (PolicyTypes.HTTP, 30),
@@ -94,7 +94,6 @@ if __name__ == "__main__":
     tests.pre_test_context()
 
     tests.simulate_http_traffic()
-    exit()
     tests.simulate_ftp_traffic()
     tests.simulate_voip_traffic()
 
