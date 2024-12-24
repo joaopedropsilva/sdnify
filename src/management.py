@@ -1,6 +1,6 @@
 from src.config import FaucetConfig
 from src.policy import Policy, PolicyTypes
-from src.virtnet import VirtNet
+from src.virtnet import VirtNet, TestingFeatures
 from src.config import Config
 from src.topology import Topology, TopologyFactory
 from src.context import Context, ContextFactory
@@ -60,13 +60,21 @@ class NetworkManager:
 
 
 class VirtNetManager(NetworkManager):
-    def __init__(self, topology: Topology, context: Context):
+    def __init__(self,
+                 topology: Topology,
+                 context: Context,
+                 with_testing_features: bool = False):
         super().__init__(topology=topology, context=context)
-        self._virtnet = VirtNet(topo_schema=self._topology.schema)
+        self._virtnet = VirtNet(topo_schema=self._topology.schema,
+                                enable_testing_features=with_testing_features)
 
     @property
-    def network_already_up(self) -> bool:
-        return True if self._virtnet.net is not None else False
+    def network_exists(self) -> bool:
+        return self._virtnet.network_exists
+
+    @property
+    def testing_features(self) -> TestingFeatures | None:
+        return self._virtnet.testing_features
 
     def create_network(self) -> tuple[str, bool]:
         (err_generation, did_generate) = self._virtnet.generate()
@@ -85,6 +93,10 @@ class VirtNetManager(NetworkManager):
         return ("", True)
 
     def destroy_network(self) -> tuple[str, bool]:
+        (err_stop, did_stop) = self._virtnet.stop()
+        if not did_stop:
+            return (err_stop, False)
+
         (err_destruction, did_destroy) = self._virtnet.destroy()
         if not did_destroy:
             return (err_destruction, False)
@@ -94,7 +106,7 @@ class VirtNetManager(NetworkManager):
 
 class VirtNetManagerFactory:
     @staticmethod
-    def create() -> tuple[str, VirtNetManager | None]:
+    def create(with_testing_features: bool = False) -> tuple[str, VirtNetManager | None]:
         (err_config, project_config) = Config.get()
         if err_config != "":
             return (err_config, None)
@@ -113,5 +125,7 @@ class VirtNetManagerFactory:
         if context is None:
             return (err_context, None)
 
-        return ("", VirtNetManager(topology=topology, context=context))
+        return ("", VirtNetManager(topology=topology,
+                                   context=context,
+                                   with_testing_features=with_testing_features))
 

@@ -15,14 +15,13 @@ if manager is None:
 def virtnet_create() -> Response:
     if manager is None:
         return Response(status=500)
-    print(manager)
 
     if manager.network_already_up:
         return Response(response="Rede virtual já instanciada.", status=409)
 
-    (err_generation, is_network_up) = manager.virtnet.generate()
-    if not is_network_up:
-        return Response(response=err_generation, status=500)
+    (err_creation, did_create) = manager.create_network()
+    if not did_create:
+        return Response(response=err_creation, status=500)
 
     return Response(response="Rede virtual criada com sucesso.", status=201)
 
@@ -31,11 +30,7 @@ def virtnet_destroy() -> Response:
     if manager is None:
         return Response(status=500)
 
-    if not manager.network_already_up:
-        return Response(response="Rede virtual não localizada ou offline.",
-                        status=500)
-
-    (err_destruction, did_destroy) = manager.virtnet.destroy()
+    (err_destruction, did_destroy) = manager.destroy_network()
     if not did_destroy:
         return Response(response=err_destruction, status=500)
 

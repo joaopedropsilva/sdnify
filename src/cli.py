@@ -3,20 +3,19 @@ from flask import Response
 from subprocess import run
 import requests
 
-from src.utils import Display, Manual
+from src.utils import Manual
 
 
-class Actions:
+class _Actions:
     _API_URL = "http://127.0.0.1:5000"
 
     @staticmethod
     def _format_api_output_to_stdout(func):
         def _wrapper(_cls, *args):
-            dp = Display(prefix="cli")
-
             response = func(_cls, *args)
 
-            dp.message(f"{response.status_code} | {response.text}")
+            print(f"[cli] {response.status_code} | {response.text}")
+
 
         return _wrapper
 
@@ -112,14 +111,14 @@ class Dispatcher:
 
         args = parser.parse_args()
         action_map = {
-            "virtnet_create": Actions.virtnet_create,
-            "virtnet_destroy": Actions.virtnet_destroy,
-            "virtnet_status": Actions.virtnet_status,
-            "create_policy": lambda: Actions.create_policy(args.traffic_type,
+            "virtnet_create": _Actions.virtnet_create,
+            "virtnet_destroy": _Actions.virtnet_destroy,
+            "virtnet_status": _Actions.virtnet_status,
+            "create_policy": lambda: _Actions.create_policy(args.traffic_type,
                                                            args.bandwidth),
-            "remove_policy": lambda: Actions.remove_policy(args.traffic_type),
-            "manual": Actions.show_manual,
-            "test": lambda: Actions.run_tests(args.interactive,
+            "remove_policy": lambda: _Actions.remove_policy(args.traffic_type),
+            "manual": _Actions.show_manual,
+            "test": lambda: _Actions.run_tests(args.interactive,
                                                    args.file)
         }
 
