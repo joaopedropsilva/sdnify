@@ -19,6 +19,7 @@ class PolicyTests:
                                                      host_options=host_options,
                                                      logger=TestLogger.command)
         self._manager.testing_features.iperf_as_client(hostname="h2",
+                                                       server_hostname="h1",
                                                        host_options=host_options,
                                                        logger=TestLogger.command)
 

@@ -90,17 +90,22 @@ class TestingFeatures:
         logger(command)
         host.cmd(command)
 
-    def iperf_as_client(self, hostname: str, host_options: dict, logger: Callable) -> None:
-        host = self._net.get(hostname)
+    def iperf_as_client(self,
+                        hostname: str,
+                        server_hostname: str,
+                        host_options: dict,
+                        logger: Callable) -> None:
+        client = self._net.get(hostname)
+        server = self._net.get(server_hostname)
 
         gen = _IperfGenerator(port=host_options["port"],
                               transport=host_options["transport"],
-                              host_ip=host.IP(),
+                              host_ip=server.IP(),
                               bandwidth=host_options["bandwidth"])
         command = gen.generate(command="iperf_as_client")
 
         logger(command)
-        with host.popen(command) as process:
+        with client.popen(command) as process:
             for line in process.stdout:
                 print(line.strip())
 
