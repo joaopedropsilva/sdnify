@@ -1,9 +1,22 @@
 from argparse import ArgumentParser
 from flask import Response
+from pathlib import Path
 from subprocess import run
 import requests
 
-from src.utils import Manual
+
+class _Manual:
+    _DOC_FILE = "README.md"
+
+    @staticmethod
+    def _get_project_path() -> Path:
+        src_path = Path(__file__).parent.resolve()
+        return Path(src_path).parent.resolve()
+
+    @classmethod
+    def get(cls) -> None:
+        with open(Path(cls._get_project_path(), cls._DOC_FILE), "r") as file:
+            print(file.read())
 
 
 class _Actions:
@@ -49,7 +62,7 @@ class _Actions:
 
     @staticmethod
     def show_manual() -> None:
-        Manual.get()
+        _Manual.get()
 
     @staticmethod
     def run_tests(interactive: bool, test_file: str) -> None:
