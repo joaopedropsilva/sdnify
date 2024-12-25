@@ -1,12 +1,18 @@
 {
-    "faucet_config_path": "./dependencies/etc/faucet/faucet.yaml",
-    "prometheus_config_path": "/etc/prometheus/prometheus.yml",
     "topo_schema_path": "./topo.example.json",
-    "limit_bandwidth": false,
     "max_bandwidth": 100,
-    "bandwidths": {
-        "http": 30,
-        "ftp": 10,
-        "voip": 60
-    }
+    "redirect": [
+        {
+            "src_name": "h1",
+            "dst_name": "h3",
+            "dst_ip": "10.0.0.3",
+            "traffic_type": "all"
+        },
+        {
+            "src_name": "h1",
+            "dst_name": "h2",
+            "dst_ip": "10.0.0.2",
+            "traffic_type": "http"
+        }
+    ]
 }

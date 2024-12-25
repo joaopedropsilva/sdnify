@@ -1,7 +1,5 @@
 from enum import Enum
 
-from src.data import Success, Error
-
 
 class PolicyTypes(Enum):
     VOIP = "voip"
@@ -18,29 +16,28 @@ class Policy:
 class PolicyFactory:
     _MIN_BANDWIDTH = 1
 
-    def __init__(self, policy_data: dict, max_bandwidth: int):
-        self._policy_data = policy_data
-        self._max_bandwidth = max_bandwidth
-
-    def create(self) -> tuple[Error | Success, Policy | None]:
+    @classmethod
+    def create_using(cls, policy_data: dict, max_bandwidth: int) \
+            -> tuple[str, Policy | None]:
         bandwidth = int()
         try:
-            bandwidth = self._policy_data["bandwidth"]
+            bandwidth = policy_data["bandwidth"]
         except KeyError:
-            return Error.BandwidthNotFound, None
+            return ("Largura de banda ausente.", None)
 
         traffic_type = str()
         try:
-            tt = self._policy_data["traffic_type"]
+            tt = policy_data["traffic_type"]
             traffic_type = PolicyTypes[tt.upper()]
         except KeyError:
-            return Error.InvalidPolicyTrafficType, None
+            return ("Tipo de tráfego inválido para política de classificação.",
+                    None)
 
-        if bandwidth < self._MIN_BANDWIDTH \
-            or bandwidth > self._max_bandwidth:
-            return Error.InvalidPolicyBandwidth, None
+        if bandwidth < cls._MIN_BANDWIDTH or bandwidth > max_bandwidth:
+            return ("Largura de banda inválida para política de classificação.",
+                    None)
 
         policy = Policy(traffic_type=traffic_type, bandwidth=bandwidth)
 
-        return Success.OperationOk, policy
+        return ("", policy)
 

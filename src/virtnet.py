@@ -1,220 +1,188 @@
 from mininet.node import RemoteController
+from mininet.cli import CLI
 from mininet.clean import Cleanup
-from mininet.net import Mininet
 from mininet.topo import Topo
 from mininet.net import Mininet
-from pathlib import Path
-import yaml
-
-from src.utils import File
-from src.data import Error, Success
+from typing import Callable
 
 
-class CustomTopo(Topo):
-    def build(self, topo_schema: dict) -> None:
-        for host in topo_schema["hosts"]:
-            self.addHost(host)
+class _MininetTopoBuilder(Topo):
+    def build(self, schema: dict) -> None:
+        for dp in schema["dps"]:
+            dp_name = dp["name"]
 
-        for switch in topo_schema["switches"]:
-            id = switch["id"]
-            links = switch["links"]
+            self.addSwitch(dp_name)
 
-            self.addSwitch(id)
-
-            for host in links:
-                self.addLink(host, id)
+            for host in dp["hosts"]:
+                self.addHost(host["name"])
+                self.addLink(host["name"], dp_name)
 
 
-class _TopoSchema:
-    _SWITCHES_KEY = "switches"
-    _HOSTS_KEY = "hosts"
-    _ID_KEY = "id"
-    _LINKS_KEY = "links"
+class _MininetFactory():
+    _OPF_PORT = 6653
 
-    def __init__(self, topo_schema_path: str):
-        self._schema = File.read_json_from(filepath=topo_schema_path)
-
-    @property
-    def schema(self) -> dict:
-        return self._schema
-
-    def validate(self)-> Success | Error:
-        if not isinstance(self._schema[self._HOSTS_KEY], list):
-            return Error.HostsKeyWrongTypeInTopoSchema
-        
-        for host in self._schema[self._HOSTS_KEY]:
-            if not isinstance(host, str):
-                return Error.HostsKeyWrongValueInTopoSchema
-        
-        if not isinstance(self._schema[self._SWITCHES_KEY], list):
-            return Error.SwitchesKeyWrongTypeInTopoSchema
-        
-        for switch in self._schema[self._SWITCHES_KEY]:
-            if not isinstance(switch, dict):
-                return Error.SwitchesKeyWrongValueInTopoSchema
-
-            if self._ID_KEY not in switch \
-                or not isinstance(switch[self._ID_KEY], str):
-                return Error.SwitchObjectWithNoIdInTopoSchema
-
-            if self._LINKS_KEY not in switch \
-                or not isinstance(switch[self._LINKS_KEY], list):
-                return Error.SwitchObjectWithNoLinksInTopoSchema
-            
-            for link in switch[self._LINKS_KEY]:
-                if not isinstance(link, str):
-                    return Error.LinksWrongValueInTopoSchema
-
-        return Success.OperationOk
-
-    def translate_topo_to_controller_config(self) -> Success | Error:
-        faucet_path = Path(File.get_project_path(),
-                           "dependencies/etc/faucet/faucet.yaml")
-
-        try:
-            with open(faucet_path, "r") as file:
-                existing_config = yaml.safe_load(file)
-        except FileNotFoundError:
-            return Error.ControllerConfigNotFound
-
-        dps = {}
-        for dp_number, switch in enumerate(self._schema[self._SWITCHES_KEY],
-                                           start=1):
-            id = switch[self._ID_KEY]
-            hosts = switch[self._LINKS_KEY]
-
-            interfaces = {}
-            for opf_port, host in enumerate(hosts, start=1):
-                interfaces[opf_port] = {
-                    "name": host,
-                    "description": f"virtualized {host}",
-                    "native_vlan": f"test"
-                }
-
-            dps[id] = {
-                "dp_id": dp_number,
-                "hardware": "Open vSwitch",
-                "interfaces": interfaces
-            }
-
-        existing_config["dps"] = dps
-
-        try:
-            acl_names = list(existing_config["acls"].keys())
-            acl_names.reverse()
-
-            existing_config["vlans"]["test"]["acls_in"] = acl_names
-            existing_config_wt_vlans = existing_config.copy()
-            del existing_config_wt_vlans["vlans"]
-
-            with open(faucet_path, "w") as file:
-                file.write(yaml.dump(existing_config_wt_vlans,
-                                     sort_keys=False,
-                                     default_flow_style=False))
-                file.write("vlans:\n")
-                file.write("  test:\n")
-                file.write(f"    description: " \
-                           f"{existing_config['vlans']['test']['description']}\n")
-                file.write(f"    vid: " \
-                           f"{existing_config['vlans']['test']['vid']}\n")
-                file.write(f"    acls_in: " \
-                           f"{yaml.dump(existing_config['vlans']['test']['acls_in'], default_flow_style=True).strip()}\n")
-        except Exception:
-            return Error.ConfigWriteFailure
-        
-        return Success.ConfigWriteOk
-
-
-class VirtNetBuilder():
-    _DEFAULT_CONTROLLER_NAME = "c0"
-    _DEFAULT_CONTROLLER_IP = "faucet"
-    _DEFAULT_OPF_PORT = 6653
-
-    def __init__(self, topo_schema_path: str, controller_options: dict = {}):
-        self._ts = _TopoSchema(topo_schema_path=topo_schema_path)
-        self._controller_name = controller_options["name"] \
-                                    if len(controller_options) \
-                                    else self._DEFAULT_CONTROLLER_NAME
-        self._controller_ip = controller_options["ip"] \
-                                   if len(controller_options) \
-                                    else self._DEFAULT_CONTROLLER_IP
-        self._opf_port = controller_options["opf_port"] \
-                                    if len(controller_options) \
-                                    else self._DEFAULT_OPF_PORT
-
-    def _create_controller(self) -> RemoteController:
-        return RemoteController(
-            name=self._controller_name,
-            ip=self._controller_ip,
-            port=self._opf_port
-        )
-
-    def build_network(self) -> tuple[Success | Error, Mininet | None]:
-        validation_result = self._ts.validate()
-        if not isinstance(validation_result, Success):
-            return (validation_result, None)
-
-        translation_result = \
-            self._ts.translate_topo_to_controller_config()
-        if not isinstance(translation_result, Success):
-            return (translation_result, None)
-
+    @classmethod
+    def create_using(cls, topo_schema: dict) -> tuple[str, Mininet | None]:
         net = None
-        build_result = None
         try:
-            net = Mininet(topo=CustomTopo(topo_schema=self._ts.schema))
+            net = Mininet(topo=_MininetTopoBuilder(topo_schema))
 
             net.addController(name="c1",
                               controller=RemoteController,
                               ip="faucet",
-                              port=6653)
+                              port=cls._OPF_PORT)
 
             net.addController(name="c2",
                               controller=RemoteController,
                               ip="gauge",
-                              port=6653)
+                              port=cls._OPF_PORT)
 
-            build_result = Success.NetworkBuildOk
-        except Exception:
-            build_result = Error.NetworkBuildFailed
+            return ("", net)
+        except Exception as err:
+            return (f"Falha ao instanciar a rede virtual: {repr(err)}", None)
 
-        return (build_result, net)
+
+class _IperfGenerator:
+    def __init__(self,
+                 port: int,
+                 transport: str,
+                 host_ip: str = "",
+                 bandwidth: str = ""):
+        self._port = port
+        self._transport = "" if transport == "tcp" else " -u"
+        self._host_ip = host_ip
+        self._bandwidth = bandwidth
+
+    def _iperf_as_host(self) -> str:
+        return f"iperf -s -p {self._port}{self._transport} &"
+
+    def _iperf_as_client(self) -> str:
+        return f"iperf -c {self._host_ip} -p {self._port}" \
+               f"{self._transport} " \
+               f"-i 1 -t 10 -b {self._bandwidth}"
+
+    def generate(self, command: str) -> str:
+        if command == "iperf_as_host":
+            return self._iperf_as_host()
+        elif command == "iperf_as_client":
+            return self._iperf_as_client()
+
+        return ""
+
+
+class TestingFeatures:
+    def __init__(self, net: Mininet):
+        self._net = net
+
+    def ping_all(self) -> None:
+        self._net.pingAll()
+
+    def invoke_cli(self) -> None:
+        CLI(self._net)
+
+    def iperf_as_host(self, hostname: str, host_options: dict, logger: Callable) -> None:
+        host = self._net.get(hostname)
+
+        gen = _IperfGenerator(port=host_options["port"],
+                              transport=host_options["transport"])
+        command = gen.generate(command="iperf_as_host")
+
+        logger(command)
+        host.cmd(command)
+
+    def iperf_as_client(self,
+                        hostname: str,
+                        server_hostname: str,
+                        host_options: dict,
+                        logger: Callable) -> None:
+        client = self._net.get(hostname)
+        server = self._net.get(server_hostname)
+
+        gen = _IperfGenerator(port=host_options["port"],
+                              transport=host_options["transport"],
+                              host_ip=server.IP(),
+                              bandwidth=host_options["bandwidth"])
+        command = gen.generate(command="iperf_as_client")
+
+        logger(command)
+        with client.popen(command) as process:
+            for line in process.stdout:
+                print(line.strip())
+
+    def kill_iperf(self, hostname: str, logger: Callable) -> None:
+        host = self._net.get(hostname)
+
+        command = "kill %iperf"
+
+        logger(command)
+        host.cmd(command)
 
 
 class VirtNet:
-    def __init__(self):
-        topo_schema_path = File.get_config()["topo_schema_path"]
-        self._builder = VirtNetBuilder(topo_schema_path=topo_schema_path)
+    def __init__(self, topo_schema: dict, enable_testing_features: bool = False):
         self._net = None
+        self._topo_schema = topo_schema
+        self._is_testing_enabled = enable_testing_features
+        self._testing_features = None
 
     @property
-    def net(self) -> Mininet | None:
-        return self._net
+    def network_exists(self) -> bool:
+        return False if self._net is None else True
 
-    def generate(self) -> Success | Error:
-        (build_result, net) = self._builder.build_network()
+    @property
+    def testing_features(self) -> TestingFeatures | None:
+        return self._testing_features
 
-        if isinstance(build_result, Success):
-            if net is not None:
-                self._net = net
-                self._net.start()
-
-        return build_result
-
-    def destroy(self) -> Success | Error:
-        operation_result = Success.NetworkDestructionOk
-
+    def generate(self) -> tuple[str, bool]:
         if self._net is not None:
-            try:
-                self._net.stop()
-                self._net = None
-            except Exception:
-                operation_result = Error.NetworkDestructionFailed
+            return ("", True)
 
-        Cleanup()
+        (err_mininet, net) = \
+                _MininetFactory.create_using(topo_schema=self._topo_schema)
+        if net is None:
+            return (err_mininet, False)
 
-        return operation_result
+        if self._is_testing_enabled:
+            self._testing_features = TestingFeatures(net=net)
 
-    def stats(self) -> None:
-        return
+        self._net = net
+
+        return ("", True)
+
+    def start(self) -> tuple[str, bool]:
+        if self._net is None:
+            return ("Falha ao iniciar a rede virtual: rede virtual não instanciada",
+                    False)
+        try:
+            self._net.start()
+        except Exception as err:
+            return (f"Falha ao iniciar a rede virtual: {repr(err)}",
+                    False)
+        
+        return ("", True)
+
+    def stop(self) -> tuple[str, bool]:
+        if self._net is None:
+            return ("Falha ao interromper a rede virtual: rede virtual não instanciada",
+                    False)
+        try:
+            self._net.stop()
+        except Exception as err:
+            return (f"Falha ao interromper a rede virtual: {repr(err)}",
+                    False)
+
+        return ("", True)
+
+    def destroy(self) -> tuple[str, bool]:
+        if self._net is None:
+            return ("Falha ao destruir a rede virtual: rede virtual não instanciada",
+                    False)
+
+        try:
+            self._net = None
+            Cleanup()
+        except Exception as err:
+            return (f"Falha ao destruir a rede virtual: {repr(err)}", False)
+
+        return ("", True)
 

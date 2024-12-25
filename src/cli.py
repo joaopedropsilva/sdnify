@@ -1,29 +1,41 @@
 from argparse import ArgumentParser
 from flask import Response
+from pathlib import Path
 from subprocess import run
 import requests
 
-from src.utils import Display
+
+class _Manual:
+    _DOC_FILE = "README.md"
+
+    @staticmethod
+    def _get_project_path() -> Path:
+        src_path = Path(__file__).parent.resolve()
+        return Path(src_path).parent.resolve()
+
+    @classmethod
+    def get(cls) -> None:
+        with open(Path(cls._get_project_path(), cls._DOC_FILE), "r") as file:
+            print(file.read())
 
 
-class Actions:
+class _Actions:
     _API_URL = "http://127.0.0.1:5000"
 
     @staticmethod
     def _format_api_output_to_stdout(func):
         def _wrapper(_cls, *args):
-            dp = Display(prefix="cli")
-
             response = func(_cls, *args)
 
-            dp.message(f"{response.status_code} | {response.text}")
+            print(f"[cli] {response.status_code} | {response.text}")
+
 
         return _wrapper
 
     @classmethod
     @_format_api_output_to_stdout
     def virtnet_create(cls) -> Response:
-        return requests.post(f"{cls._API_URL}/virtnet/start")
+        return requests.post(f"{cls._API_URL}/virtnet/create")
 
     @classmethod
     @_format_api_output_to_stdout
@@ -38,20 +50,19 @@ class Actions:
     @classmethod
     @_format_api_output_to_stdout
     def create_policy(cls, traffic_type: str, bandwidth: int) -> Response:
-        data = {"traffic_type": traffic_type, "bandwidth": bandwidth}
-        return requests.post(f"{cls._API_URL}/controller/manage_policy",
-                             json=data)
+       data = {"traffic_type": traffic_type, "bandwidth": bandwidth}
+       return requests.post(f"{cls._API_URL}/manager/manage_policy", json=data)
 
     @classmethod
     @_format_api_output_to_stdout
     def remove_policy(cls, traffic_type: str) -> Response:
         data = {"traffic_type": traffic_type}
-        return requests.delete(f"{cls._API_URL}/controller/manage_policy",
+        return requests.delete(f"{cls._API_URL}/manager/manage_policy",
                                json=data)
 
     @staticmethod
     def show_manual() -> None:
-        pass
+        _Manual.get()
 
     @staticmethod
     def run_tests(interactive: bool, test_file: str) -> None:
@@ -63,8 +74,10 @@ class Actions:
         if test_file is not None:
             script = ["python", "-m", f"tests.{test_file}"]
 
-        # Ctrl + C ainda para esse processo
-        run(script)
+        try:
+            run(script)
+        except KeyboardInterrupt:
+            print("kbd")
 
 
 class Dispatcher:
@@ -113,14 +126,14 @@ class Dispatcher:
 
         args = parser.parse_args()
         action_map = {
-            "virtnet_create": Actions.virtnet_create,
-            "virtnet_destroy": Actions.virtnet_destroy,
-            "virtnet_status": Actions.virtnet_status,
-            "create_policy": lambda: Actions.create_policy(args.traffic_type,
+            "virtnet_create": _Actions.virtnet_create,
+            "virtnet_destroy": _Actions.virtnet_destroy,
+            "virtnet_status": _Actions.virtnet_status,
+            "create_policy": lambda: _Actions.create_policy(args.traffic_type,
                                                            args.bandwidth),
-            "remove_policy": lambda: Actions.remove_policy(args.traffic_type),
-            "manual": Actions.show_manual,
-            "test": lambda: Actions.run_tests(args.interactive,
+            "remove_policy": lambda: _Actions.remove_policy(args.traffic_type),
+            "manual": _Actions.show_manual,
+            "test": lambda: _Actions.run_tests(args.interactive,
                                                    args.file)
         }
 
@@ -128,6 +141,7 @@ class Dispatcher:
             action_map[args.action]()
         else:
             print("Ação desconhecida. Use --help para ver as opções.")
+
 
 if __name__ == "__main__":
     Dispatcher.dispatch()

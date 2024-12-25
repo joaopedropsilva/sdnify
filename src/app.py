@@ -1,74 +1,76 @@
+from src.config import Config
 from flask import Flask, Response, request
 import json
-
-from src.management import VirtNetManager
-from src.data import Success, Warning, Error
+from src.management import VirtNetManagerFactory
 from src.policy import PolicyTypes, PolicyFactory
-from src.utils import File
 
 
 app = Flask(__name__)
-manager = VirtNetManager()
 
-@app.route("/virtnet/start", methods=["POST"])
-def virtnet_start() -> Response:
+(err_manager, manager) = VirtNetManagerFactory.create()
+if manager is None:
+    raise Exception(err_manager)
+
+@app.route("/virtnet/create", methods=["POST"])
+def virtnet_create() -> Response:
+    if manager is None:
+        return Response(status=500)
+
     if manager.network_already_up:
-        return Response(response=Warning.NetworkAlreadyUp, status=409)
+        return Response(response="Rede virtual já instanciada.", status=409)
 
-    generation_result = manager.virtnet.generate()
+    (err_creation, did_create) = manager.create_network()
+    if not did_create:
+        return Response(response=err_creation, status=500)
 
-    status = 201
-    if isinstance(generation_result, Error):
-        status = 500
-
-    return Response(response=generation_result.value, status=status)
+    return Response(response="Rede virtual criada com sucesso.", status=201)
 
 @app.route("/virtnet/destroy", methods=["POST"])
 def virtnet_destroy() -> Response:
-    if not manager.network_already_up:
-        return Response(response=Warning.NetworkUnreachable, status=500)
+    if manager is None:
+        return Response(status=500)
 
-    destruction_result = manager.virtnet.destroy()
+    (err_destruction, did_destroy) = manager.destroy_network()
+    if not did_destroy:
+        return Response(response=err_destruction, status=500)
 
-    status = 200
-    if isinstance(destruction_result, Error):
-        status=500
-
-    return Response(response=destruction_result.value, status=status)
+    return Response(response="Rede virtual destruída com sucesso.",
+                    status=200)
 
 @app.route("/virtnet/status")
 def virtnet_status() -> Response:
+    if manager is None:
+        return Response(status=500)
+
     return Response(response=json.dumps({"status": manager.network_already_up}),
                     status=200)
 
-@app.route("/controller/manage_policy", methods=["POST", "DELETE"])
+@app.route("/manager/manage_policy", methods=["POST", "DELETE"])
 def manage_policy() -> Response:
+    if manager is None:
+        return Response(status=500)
+
+    (err_config, config) = Config.get()
+    if err_config != "":
+        return Response(err_config, status=500)
+
     try:
         data = request.json
         method = request.method
         
-
-        status = 400
         if method == "POST":
-            factory = \
-                PolicyFactory(policy_data=data,
-                              max_bandwidth=File.get_config()["max_bandwidth"])
-
-            (create_type_result, p) = factory.create()
-
-            if isinstance(create_type_result, Error):
-                return Response(response=create_type_result.value,
-                                status=status)
-
+            (err_policy, p) = \
+                    PolicyFactory.create_using(policy_data=data,
+                                               max_bandwidth=config["max_bandwidth"])
             if p is None:
-                return Response(status=500)
+                return Response(response=err_policy, status=400)
 
-            creation_result = manager.flow.create(policy=p)
+            (err_creation, did_create) = manager.create(policy=p)
+            if not did_create:
+                return Response(response=err_creation, status=500)
 
-            if isinstance(creation_result, Success):
-                status = 201
-
-            return Response(response=creation_result.value, status=status)
+            return Response(response="Política de classificação criada com sucesso!",
+                            status=201)
         elif method == "DELETE":
             traffic_type = str()
             try:
@@ -79,48 +81,39 @@ def manage_policy() -> Response:
             try:
                 traffic_type = PolicyTypes[traffic_type.upper()]
             except KeyError:
-                return Response(response=Error.InvalidPolicyTrafficType.value,
+                return Response(response="Tipo de tráfego inválido para política de classificação.",
                                 status=400)
 
-            removal_result = \
-                    manager.flow.remove_policy_by(traffic_type=traffic_type)
+            (err_remove, did_remove) = \
+                    manager.remove_policy_by(traffic_type=traffic_type)
+            if not did_remove:
+                return Response(response=err_remove, status=500)
 
-            if isinstance(removal_result, Success):
-                status = 200
-
-            return Response(response=removal_result.value, status=status)
+            return Response(response="Política de classificação removida com sucesso!",
+                            status=status)
         else:
             return Response(response="Método HTTP inválido.", status=405)
     except Exception:
         return Response(status=500)
     
-@app.route("/controller/capture_alerts", methods=["POST"])
+@app.route("/manager/capture_alerts", methods=["POST"])
 def capture_alerts() -> Response:
+    if manager is None:
+        return Response(status=500)
+
     try:
         alerts_data = request.json
         alerts = alerts_data.get("alerts", None)
         
-        result = manager.flow.process_alerts(alerts)
+        (err_alerts, did_process) = manager.process_alerts(alerts)
+        if not did_process:
+            return Response(response=err_alerts, status=500)
 
-        if isinstance(result, Error): 
-            return Response(
-                response=json.dumps({"error": "Internal server error"}),
-                status=500,
-                mimetype="application/json",
-            )
-        
-        return Response(
-                response=json.dumps({"message": "Alertas processados com sucesso."}),
-                status=200,
-                mimetype="application/json",
-            )
+        return Response(response="", status=200)
 
     except Exception as e:
-        return Response(
-            response=json.dumps({"error": "Internal server error", "details": str(e)}),
-            status=500,
-            mimetype="application/json",
-        )
+        return Response(response=f"Falha ao recuperar informações de alertas: {repr(e)}",
+                        status=400)
 
 @app.route("/status")
 def status() -> Response:

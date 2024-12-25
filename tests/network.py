@@ -1,62 +1,40 @@
-from mininet.util import dumpNodeConnections
-from mininet.net import Mininet
-
-from src.virtnet import CustomTopo, VirtNetBuilder
-from src.data import Error
-from src.utils import Display, File
-
+from src.management import VirtNetManagerFactory
+from src.config import FaucetConfig
+from src.test_logger import TestLogger
 
 class VirtNetTests:
     def __init__(self):
-        self._display = Display(prefix="tests")
+        (err_manager, manager) = VirtNetManagerFactory.create(with_testing_features=True)
+        if manager is None:
+            raise Exception(err_manager)
 
-    def builds_simple_topo_and_ping_all(self) -> None:
-        self._display.title(f"Simulando uma rede padrão e pingando em " \
-                            f"todos os hosts")
+        (err_creation, did_create) = manager.create_network()
+        if not did_create:
+            raise Exception(err_creation)
 
-        simple_topo = {
-            "hosts": ["h1", "h2"],
-            "switches": [
-                {
-                    "id": "sw1",
-                    "links": ["h1", "h2"]
-                }
-            ]
-        }
+        self._manager = manager
 
-        topo = CustomTopo(topo_schema=simple_topo)
-        net = Mininet(topo=topo)
+    def post_test(self) -> None:
+        (err_destruction, did_destroy) = self._manager.destroy_network()
+        if not did_destroy:
+            raise Exception(err_destruction)
 
-        dumpNodeConnections(net.hosts)
+        (err_clear, was_cleared) = FaucetConfig.clear()
+        if not was_cleared:
+            raise Exception(err_clear)
 
-        net.start()
-        net.pingAll()
-        net.stop()
+    def ping_all(self) -> None:
+        TestLogger.message("Pingando todos os hosts criados na rede virtual")
+        if self._manager.testing_features is None:
+            return
 
-    def full_build_network_and_ping_all(self) -> None:
-        self._display.title(f"Simulando uma rede com controlador faucet e " \
-                            f"pingando todos os hosts")
-
-        builder = VirtNetBuilder(
-            topo_schema_path=File.get_config()["topo_schema_path"]
-        )
-
-        (build_result, net) = builder.build_network()
-        
-        if isinstance(build_result, Error):
-            raise Exception(build_result.value)
-
-        if net is not None:
-            dumpNodeConnections(net.hosts)
-
-            net.start()
-            net.pingAll()
-            net.stop()
+        self._manager.testing_features.ping_all()
 
 
 if __name__ == "__main__":
     tests = VirtNetTests()
 
-    tests.builds_simple_topo_and_ping_all()
-    tests.full_build_network_and_ping_all()
+    TestLogger.title("testes de instanciação da rede")
+    tests.ping_all()
+    tests.post_test()
 
