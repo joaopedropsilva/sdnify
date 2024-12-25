@@ -74,8 +74,10 @@ class _Actions:
         if test_file is not None:
             script = ["python", "-m", f"tests.{test_file}"]
 
-        # Ctrl + C ainda para esse processo
-        run(script)
+        try:
+            run(script)
+        except KeyboardInterrupt:
+            print("kbd")
 
 
 class Dispatcher:

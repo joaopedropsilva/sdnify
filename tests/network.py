@@ -1,4 +1,5 @@
 from src.management import VirtNetManagerFactory
+from src.config import FaucetConfig
 from src.test_logger import TestLogger
 
 class VirtNetTests:
@@ -17,6 +18,10 @@ class VirtNetTests:
         (err_destruction, did_destroy) = self._manager.destroy_network()
         if not did_destroy:
             raise Exception(err_destruction)
+
+        (err_clear, was_cleared) = FaucetConfig.clear()
+        if not was_cleared:
+            raise Exception(err_clear)
 
     def ping_all(self) -> None:
         TestLogger.message("Pingando todos os hosts criados na rede virtual")

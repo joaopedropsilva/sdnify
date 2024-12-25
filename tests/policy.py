@@ -1,3 +1,4 @@
+from src.config import FaucetConfig
 from src.management import VirtNetManagerFactory
 from src.policy import Policy, PolicyTypes
 from src.test_logger import TestLogger
@@ -37,6 +38,11 @@ class PolicyTests:
             (err_destruction, did_destroy) = self._manager.destroy_network()
             if not did_destroy:
                 raise Exception(err_destruction)
+
+    def post_test(self) -> None:
+        (err_clear, was_cleared) = FaucetConfig.clear()
+        if not was_cleared:
+            raise Exception(err_clear)
 
     def create_test_policies(self) -> None:
         TestLogger.message("criando políticas de classificação de pacote")
@@ -89,7 +95,6 @@ class PolicyTests:
 if __name__ == "__main__":
     tests = PolicyTests()
 
-
     TestLogger.title("testes políticas de classificação de pacotes")
     tests.pre_test_context()
 
@@ -106,4 +111,6 @@ if __name__ == "__main__":
     tests.simulate_voip_traffic()
 
     tests.post_test_context()
+
+    tests.post_test()
 

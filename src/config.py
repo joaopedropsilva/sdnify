@@ -65,3 +65,11 @@ class FaucetConfig(Config):
 
         return ("", True)
 
+    @classmethod
+    def clear(cls) -> tuple[str, bool]:
+        faucet_path = Path(cls._get_project_path(), cls._FAUCET_PATH)
+        with open(faucet_path, "w") as file:
+            file.write(yaml.dump(None, default_flow_style=False))
+
+        return ("", True)
+

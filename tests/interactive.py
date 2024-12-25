@@ -1,4 +1,5 @@
 from src.management import VirtNetManagerFactory
+from src.config import FaucetConfig
 
 
 if __name__ == "__main__":
@@ -13,5 +14,12 @@ if __name__ == "__main__":
     if manager.testing_features is None:
         exit(1)
 
-    manager.testing_features.invoke_cli()
+    try:
+        manager.testing_features.invoke_cli()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        (err_clear, was_cleared) = FaucetConfig.clear()
+        if not was_cleared:
+            raise Exception(err_clear)
 
