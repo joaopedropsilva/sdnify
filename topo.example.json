@@ -2,6 +2,7 @@
     "dps": [
         {
             "name": "sw1",
+            "stack_priority": 1,
             "hosts": [
                 {
                     "name": "h1",

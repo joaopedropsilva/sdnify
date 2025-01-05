@@ -159,6 +159,14 @@ class Context:
                 "hardware": "Open vSwitch"
             }
 
+            stack_config = {}
+            if "stack_priority" in dp:
+                stack_config = {"priority": dp["stack_priority"]}
+
+            dp_config["stack"] = {
+                **stack_config
+                }
+
             (hosts, last_port_mapped) = self._map_all_hosts_from(dp=dp)
             stacks = self._map_all_stacks_from(dp=dp,
                                                last_port_mapped=last_port_mapped)
