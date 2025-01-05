@@ -40,7 +40,6 @@ Ações disponíveis pelo gerenciador:
 - `virtnet_create`: criar uma rede virtual;
 - `virtnet_destroy`: destruir uma rede virtual instanciada;
 - `virtnet_status`: exibir o status de operação da rede virtual instanciada;
-- `virtnet_status`: exibir o status de operação da rede virtual instanciada;
 - `create_policy`: criar uma política de classificação de pacotes;
 - `remove_policy`: remover uma política de classificação de pacotes;
 - `manual`: acesso ao presente manual de operação; 
