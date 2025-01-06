@@ -30,8 +30,10 @@ services:
       - 6653:6653
       - 9302
   gauge:
-    image: faucet/gauge:1.10.11
     restart: always
+    image: faucet/gauge:1.10.11
+    environment:
+     - GAUGE_CONFIG_STAT_RELOAD=1
     volumes:
       - ./etc/faucet/:/etc/faucet/
       - ./var/log/faucet/:/var/log/faucet/
