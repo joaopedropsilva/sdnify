@@ -74,8 +74,7 @@ cleanup () {
 
 create_switch () {
     SW_NAME=sw$1
-    # Datapath id talvez não funcione dessa maneira
-    DP_ID=$1
+    DP_ID="000000000000000$1"
 
     ovs-vsctl add-br ${SW_NAME} \
     -- set bridge ${SW_NAME} other-config:datapath-id=${DP_ID} \
