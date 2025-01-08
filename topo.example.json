@@ -2,6 +2,7 @@
     "dps": [
         {
             "name": "sw1",
+            "stack_priority": 1,
             "hosts": [
                 {
                     "name": "h1",
@@ -14,6 +15,29 @@
                 {
                     "name": "h3",
                     "vlan": "test"
+                }
+            ],
+            "stack_definitions": [
+                {
+                    "description": "sw1 stack link to sw2",
+                    "dp": "sw2",
+                    "port": 2
+                }
+            ]
+        },
+        {
+            "name": "sw2",
+            "hosts": [
+                {
+                    "name": "h4",
+                    "vlan": "test"
+                }
+            ],
+            "stack_definitions": [
+                {
+                    "description": "sw2 stack link to sw1",
+                    "dp": "sw1",
+                    "port": 4
                 }
             ]
         }

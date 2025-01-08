@@ -40,7 +40,6 @@ Ações disponíveis pelo gerenciador:
 - `virtnet_create`: criar uma rede virtual;
 - `virtnet_destroy`: destruir uma rede virtual instanciada;
 - `virtnet_status`: exibir o status de operação da rede virtual instanciada;
-- `virtnet_status`: exibir o status de operação da rede virtual instanciada;
 - `create_policy`: criar uma política de classificação de pacotes;
 - `remove_policy`: remover uma política de classificação de pacotes;
 - `manual`: acesso ao presente manual de operação; 
@@ -61,11 +60,18 @@ Propriedades de um `DP_OBJECT`:
 
 - `name`: nome da switch;
 - `hosts`: lista de `HOST_OBJECT`.
+- `stack_definitions`: lista de `STACK_OBJECT`.
 
 Propriedades de um `HOST_OBJECT`:
 
 - `name`: nome do host;
 - `vlan`: nome da vlan que agrega esse host.
+
+Propriedades de um `STACK_OBJECT`:
+
+- `description`: descrição da stack;
+- `dp`: nome da interface (switch) remota;
+- `port`: porta de acesso para a stack da switch remota.
 
 Propriedades de um `VLAN_OBJECT`:
 
@@ -90,8 +96,9 @@ Exemplo de topologia:
                     "name": "h2",
                     "vlan": "test"
                 }
-            ]
-        }
+            ],
+            "stack_definitions": []
+        },
     ],
     "vlans": [
         {

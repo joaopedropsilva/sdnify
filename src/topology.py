@@ -14,91 +14,125 @@ class Topology:
     def is_valid(self) -> bool:
         return self._is_valid
 
+    def _validate_stacks_from(self, dp: dict) -> tuple[str, bool]:
+        try:
+            stack_definitions = dp["stack_definitions"]
+        except KeyError:
+            return "Campo \"stack_definitions\" ausente em objeto de \"dps\"", False
+
+        if not isinstance(stack_definitions, list):
+            return "\"stack_definitions\" deve ser do tipo \"list\"", False
+
+        for stack in stack_definitions:
+            if "description" not in stack:
+                return "Campo \"description\" ausente em objeto de \"stack_definitions\"", False
+
+            if not isinstance(stack["description"], str):
+                return "Tipo inválido em \"description\" de objeto em \"stack_definitions\"", False
+
+            if "dp" not in stack:
+                return "Campo \"dp\" ausente em objeto de \"stack_definitions\"", False
+
+            if not isinstance(stack["dp"], str):
+                return "Tipo inválido em \"dp\" de objeto em \"stack_definitions\"", False
+
+            if "port" not in stack:
+                return "Campo \"port\" ausente em objeto de \"stack_definitions\"", False
+
+            if not isinstance(stack["port"], int):
+                return "Tipo inválido em \"port\" de objeto em \"stack_definitions\"", False
+
+        return "", True
+
+    def _validate_hosts_from(self, dp: dict) -> tuple[str, bool]:
+        try:
+            hosts = dp["hosts"]
+        except KeyError:
+            return "Campo \"hosts\" ausente em objeto de \"dps\"", False
+
+        if not isinstance(hosts, list):
+            return "\"hosts\" deve ser do tipo \"list\"", False
+
+        for host in hosts:
+            if "name" not in host:
+                return "Campo \"name\" ausente em objeto de \"hosts\"", False
+
+            if not isinstance(host["name"], str):
+                return "Tipo inválido em \"name\" de objeto em \"hosts\"", False
+
+            if "vlan" not in host:
+                return "Campo \"vlan\" ausente em objeto de \"hosts\"", False
+
+            if not isinstance(host["vlan"], str):
+                return "Tipo inválido em \"vlan\" de objeto em \"hosts\"", False
+
+        return "", True
+
     def _validate_dps(self) -> tuple[str, bool]:
         if "dps" not in self._schema:
-            return ("\"dps\" não encontrado no arquivo de topologia.", False)
+            return "\"dps\" não encontrado no arquivo de topologia.", False
 
         dps = self._schema["dps"]
 
         if not isinstance(dps, list):
-            return ("\"dps\" deve ser do tipo \"list\"", False)
+            return "\"dps\" deve ser do tipo \"list\"", False
 
         for dp in dps:
             if not isinstance(dp, dict):
-                return ("Tipo não permitido para objeto em \"dps\"", False)
+                return "Tipo não permitido para objeto em \"dps\"", False
 
             if "name" not in dp:
-                return("Campo \"name\" ausente em objeto de \"dps\"", False)
+                return "Campo \"name\" ausente em objeto de \"dps\"", False
 
-            try:
-                hosts = dp["hosts"]
-            except KeyError:
-                return("Campo \"hosts\" ausente em objeto de \"dps\"", False)
+            (err_hosts, are_hosts_valid) = self._validate_hosts_from(dp=dp)
+            if not are_hosts_valid:
+                return err_hosts, False
 
-            if not isinstance(hosts, list):
-                return ("\"hosts\" deve ser do tipo \"list\"", False)
-
-            for host in hosts:
-                if "name" not in host:
-                    return("Campo \"name\" ausente em objeto de \"hosts\"",
-                           False)
-
-                if not isinstance(host["name"], str):
-                    return("Tipo inválido em \"name\" de objeto em \"hosts\"",
-                           False)
-
-                if "vlan" not in host:
-                    return("Campo \"vlan\" ausente em objeto de \"hosts\"",
-                           False)
-
-                if not isinstance(host["vlan"], str):
-                    return("Tipo inválido em \"vlan\" de objeto em \"hosts\"",
-                           False)
+            (err_stacks, are_stacks_valid) = self._validate_stacks_from(dp=dp)
+            if not are_stacks_valid:
+                return err_stacks, False
 
         return ("", True)
 
     def _validate_vlans(self) -> tuple[str, bool]:
         if "vlans" not in self._schema:
-            return ("\"vlans\" não encontrado no arquivo de topologia.", False)
+            return "\"vlans\" não encontrado no arquivo de topologia.", False
 
         vlans = self._schema["vlans"]
 
         if not isinstance(vlans, list):
-            return ("\"vlans\" deve ser do tipo \"list\"", False)
+            return "\"vlans\" deve ser do tipo \"list\"", False
 
         for vlan in vlans:
             if not isinstance(vlan, dict):
-                return ("Tipo não permitido para objeto em \"vlans\"", False)
+                return "Tipo não permitido para objeto em \"vlans\"", False
 
             if "name" not in vlan:
-                return("Campo \"name\" ausente em objeto de \"vlans\"", False)
+                return "Campo \"name\" ausente em objeto de \"vlans\"", False
 
             if not isinstance(vlan["name"], str):
-                return("Tipo inválido em \"name\" de objeto em \"vlans\"",
-                       False)
+                return "Tipo inválido em \"name\" de objeto em \"vlans\"", False
 
             if "description" not in vlan:
-                return("Campo \"description\" ausente em objeto de \"vlans\"",
-                       False)
+                return "Campo \"description\" ausente em objeto de \"vlans\"", False
 
             if not isinstance(vlan["description"], str):
-                return("Tipo inválido em \"description\" de objeto em \"vlans\"",
-                       False)
+                return "Tipo inválido em \"description\" de objeto em \"vlans\"", False
 
-        return ("", True)
+        return "", True
 
     def validate(self) -> tuple[str, bool]:
         (err_dps, is_dps_valid) = self._validate_dps()
         if not is_dps_valid:
-            return (err_dps, False)
+            return err_dps, False
 
         (err_vlans, is_vlans_valid) = self._validate_vlans()
         if not is_vlans_valid:
-            return (err_vlans, False)
+            return err_vlans, False
 
         self._is_valid = True
 
-        return ("", True)
+        return "", True
 
 
 class TopologyFactory:
@@ -107,16 +141,16 @@ class TopologyFactory:
         try:
             topo_schema_path = config["topo_schema_path"]
         except KeyError:
-            return ("Caminho para arquivo de topologia não encontrado.", None)
+            return "Caminho para arquivo de topologia não encontrado.", None
 
         topo_schema = dict()
         try:
             with open(topo_schema_path, "r") as file:
                 topo_schema = load(file)
         except FileNotFoundError as err:
-            return (str(err), None)
+            return str(err), None
         except JSONDecodeError as err:
-            return (str(err), None)
+            return str(err), None
 
-        return ("", Topology(schema=topo_schema))
+        return "", Topology(schema=topo_schema)
 

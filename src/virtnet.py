@@ -17,6 +17,18 @@ class _MininetTopoBuilder(Topo):
                 self.addHost(host["name"])
                 self.addLink(host["name"], dp_name)
 
+        links = []
+        for dp in schema["dps"]:
+            for stack in dp["stack_definitions"]:
+                if (dp["name"], stack["dp"]) in links \
+                    or (stack["dp"], dp["name"]) in links:
+                    continue
+
+                links.append((dp["name"], stack["dp"]))
+
+        for s0, s1 in links:
+            self.addLink(s0, s1)
+
 
 class _MininetFactory():
     _OPF_PORT = 6653

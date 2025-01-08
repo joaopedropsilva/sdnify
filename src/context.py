@@ -122,24 +122,58 @@ class Context:
                 self._acls[acl_name] = []
             self._acls[acl_name].append(rule)
 
-    def _map_all_hosts_from(self, dp: dict) -> dict:
+    def _map_all_hosts_from(self, dp: dict) -> tuple[dict, int]:
         interfaces = {}
 
+        last_port_mapped = 0
         for host in dp["hosts"]:
-            interfaces[len(interfaces) + 1] = {
+            last_port_mapped += 1
+            interfaces[last_port_mapped] = {
                 "description": f"Virtualized {host['name']}",
                 "name": host["name"],
-                "native_vlan": host["vlan"],
+                "native_vlan": host["vlan"]
             }
 
-        return interfaces
+        return interfaces, last_port_mapped
+
+    def _map_all_stacks_from(self, dp: dict, last_port_mapped: int) -> dict:
+        stacks = {}
+
+        port = last_port_mapped
+        for stack in dp["stack_definitions"]:
+            port += 1
+            stacks[port] = {
+                "description": stack["description"],
+                "stack": {
+                    "dp": stack["dp"],
+                    "port": stack["port"]
+                }
+            }
+
+        return stacks
 
     def _create_dps(self) -> None:
         for index, dp in enumerate(self._topo_schema["dps"], start=1):
             dp_config = {
                 "dp_id": index,
-                "hardware": "Open vSwitch",
-                "interfaces": self._map_all_hosts_from(dp=dp)
+                "hardware": "Open vSwitch"
+            }
+
+            stack_config = {}
+            if "stack_priority" in dp:
+                stack_config = {"priority": dp["stack_priority"]}
+
+            dp_config["stack"] = {
+                **stack_config
+                }
+
+            (hosts, last_port_mapped) = self._map_all_hosts_from(dp=dp)
+            stacks = self._map_all_stacks_from(dp=dp,
+                                               last_port_mapped=last_port_mapped)
+
+            dp_config["interfaces"] = {
+                **hosts,
+                **stacks
             }
 
             self._dps[dp["name"]] = dp_config

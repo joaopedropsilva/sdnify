@@ -30,8 +30,10 @@ services:
       - 6653:6653
       - 9302
   gauge:
-    image: faucet/gauge:1.10.11
     restart: always
+    image: faucet/gauge:1.10.11
+    environment:
+     - GAUGE_CONFIG_STAT_RELOAD=1
     volumes:
       - ./etc/faucet/:/etc/faucet/
       - ./var/log/faucet/:/var/log/faucet/
@@ -42,9 +44,11 @@ services:
     image: prom/prometheus:v2.55.0
     restart: always
     privileged: true
+    user: "1000:1000"
     volumes:
       - ./etc/faucet/:/etc/faucet/
       - ./var/log/faucet/:/var/log/faucet/
+      - ./var/lib/prometheus:/prometheus
       - ./etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./etc/prometheus/faucet.rules.yml:/etc/prometheus/faucet.rules.yml
     ports:
@@ -56,6 +60,9 @@ services:
     image: grafana/grafana:11.2.2
     restart: always
     privileged: true
+    user: '0'
+    volumes:
+      - ./var/lib/grafana:/var/lib/grafana
     ports:
       - 3000:3000
     links:
