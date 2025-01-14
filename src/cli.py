@@ -1,8 +1,6 @@
 from argparse import ArgumentParser
-from flask import Response
 from pathlib import Path
 from subprocess import run
-import requests
 
 
 class _Manual:
@@ -20,46 +18,6 @@ class _Manual:
 
 
 class _Actions:
-    _API_URL = "http://127.0.0.1:5000"
-
-    @staticmethod
-    def _format_api_output_to_stdout(func):
-        def _wrapper(_cls, *args):
-            response = func(_cls, *args)
-
-            print(f"[cli] {response.status_code} | {response.text}")
-
-
-        return _wrapper
-
-    @classmethod
-    @_format_api_output_to_stdout
-    def virtnet_create(cls) -> Response:
-        return requests.post(f"{cls._API_URL}/virtnet/create")
-
-    @classmethod
-    @_format_api_output_to_stdout
-    def virtnet_destroy(cls) -> Response:
-        return requests.post(f"{cls._API_URL}/virtnet/destroy")
-
-    @classmethod
-    @_format_api_output_to_stdout
-    def virtnet_status(cls) -> Response:
-        return requests.get(f"{cls._API_URL}/virtnet/status")
-
-    @classmethod
-    @_format_api_output_to_stdout
-    def create_policy(cls, traffic_type: str, bandwidth: int) -> Response:
-       data = {"traffic_type": traffic_type, "bandwidth": bandwidth}
-       return requests.post(f"{cls._API_URL}/manager/manage_policy", json=data)
-
-    @classmethod
-    @_format_api_output_to_stdout
-    def remove_policy(cls, traffic_type: str) -> Response:
-        data = {"traffic_type": traffic_type}
-        return requests.delete(f"{cls._API_URL}/manager/manage_policy",
-                               json=data)
-
     @staticmethod
     def show_manual() -> None:
         _Manual.get()
@@ -88,12 +46,7 @@ class Dispatcher:
         parser.add_argument(
             "action",
             type=str,
-            choices=["virtnet_create",
-                     "virtnet_destroy",
-                     "virtnet_status",
-                     "create_policy",
-                     "remove_policy",
-                     "manual",
+            choices=["manual",
                      "test"],
             help="Escolha a ação a ser executada"
         )
@@ -126,12 +79,6 @@ class Dispatcher:
 
         args = parser.parse_args()
         action_map = {
-            "virtnet_create": _Actions.virtnet_create,
-            "virtnet_destroy": _Actions.virtnet_destroy,
-            "virtnet_status": _Actions.virtnet_status,
-            "create_policy": lambda: _Actions.create_policy(args.traffic_type,
-                                                           args.bandwidth),
-            "remove_policy": lambda: _Actions.remove_policy(args.traffic_type),
             "manual": _Actions.show_manual,
             "test": lambda: _Actions.run_tests(args.interactive,
                                                    args.file)

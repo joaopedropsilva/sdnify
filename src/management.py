@@ -25,9 +25,6 @@ class NetworkManager:
     def destroy_network(self) -> tuple[str, bool]:
         return ("Não implementado.", False)
 
-    def process_alerts(self, alerts: dict) -> tuple[str, bool]:
-        return ("", True)
-
     def redirect_traffic(self) -> tuple[str, bool]:
         # Remover dependência do config
         (err, config) = Config.get()
