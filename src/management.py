@@ -25,15 +25,6 @@ class NetworkManager:
     def destroy_network(self) -> tuple[str, bool]:
         return ("Não implementado.", False)
 
-    def redirect_traffic(self) -> tuple[str, bool]:
-        # Remover dependência do config
-        (err, config) = Config.get()
-        if err != "":
-            return err, False
-        self._context.redirect = config["redirect"]
-
-        return FaucetConfig.update_based_on(context=self._context)
-
     def create(self, policy: Policy) -> tuple[str, bool]:
         policy_exist = len([p for p in self._context.policies \
                             if p.traffic_type == policy.traffic_type]) != 0

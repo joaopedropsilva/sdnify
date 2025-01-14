@@ -6,10 +6,8 @@ from src.topology import Topology
 class Context:
     def __init__(self,
                  policies: List[Policy],
-                 redirect: List[dict],
                  topo_schema: dict):
         self._policies = policies
-        self._redirect = redirect
         self._topo_schema = topo_schema
         self._acls = {
             "allow-all": [
@@ -38,14 +36,6 @@ class Context:
     @policies.setter
     def policies(self, new_policies: List[Policy]) -> None:
         self._policies = new_policies
-
-    @property
-    def redirect(self) -> List[dict]:
-        return self._redirect
-
-    @redirect.setter
-    def redirect(self, new_redirect: List[dict]) -> None:
-        self._redirect = new_redirect
 
     def _get_protocol_by(self, traffic_type: str) -> dict:
         if traffic_type == PolicyTypes.VOIP.value:
@@ -92,35 +82,6 @@ class Context:
             }
 
             self._acls[policy.traffic_type.value] = [rule]
-
-    def _create_redirect_acls(self) -> None:
-        for config in self._redirect:
-            src = config["src_name"]
-            dst = config["dst_name"]
-            traffic_type = config["traffic_type"]
-
-            rule = {
-                "rule": {
-                    "dl_type": '0x800',
-                    **self._get_protocol_by(traffic_type=traffic_type),
-                    **self._get_ports_by(traffic_type=traffic_type),
-                    "actions": {
-                        "allow": 1,
-                        "output": {
-                            "set_fields": [
-                                {
-                                    "ipv4_dst": config["dst_ip"]
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-
-            acl_name = f"{src}_{dst}_{traffic_type}"
-            if acl_name not in self._acls:
-                self._acls[acl_name] = []
-            self._acls[acl_name].append(rule)
 
     def _map_all_hosts_from(self, dp: dict) -> tuple[dict, int]:
         interfaces = {}
@@ -206,7 +167,6 @@ class Context:
 
     def build_config(self) -> dict:
         self._create_policies_acls()
-        self._create_redirect_acls()
         self._create_dps()
         self._create_meters()
         self._populate_vlans_acls_in()
@@ -243,15 +203,6 @@ class ContextFactory:
         if not isinstance(policies, list):
             policies = []
 
-        try:
-            redirect = context_data["redirect"]
-        except KeyError:
-            redirect = []
-
-        if not isinstance(redirect, list):
-            redirect = []
-
         return ("", Context(policies=policies,
-                            redirect=redirect,
                             topo_schema=topology.schema))
 

@@ -1,18 +1,4 @@
 {
     "topo_schema_path": "./topo.example.json",
-    "max_bandwidth": 100,
-    "redirect": [
-        {
-            "src_name": "h1",
-            "dst_name": "h3",
-            "dst_ip": "10.0.0.3",
-            "traffic_type": "all"
-        },
-        {
-            "src_name": "h1",
-            "dst_name": "h2",
-            "dst_ip": "10.0.0.2",
-            "traffic_type": "http"
-        }
-    ]
+    "max_bandwidth": 100
 }
