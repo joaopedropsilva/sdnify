@@ -1,22 +1,11 @@
 ---
 name: sdnify
 services:
-  app:
+  test-env:
     build:
       context: .
-      dockerfile: app.Dockerfile
     tty: true
     privileged: true
-    environment:
-     - DISPLAY
-    volumes:
-     - ./.bashrc:/root/.bashrc
-     - ./.Xresources:/root/.Xresources
-     - ./:/root/app/
-     - /tmp/.X11-unix:/tmp/.X11-unix
-     - /lib/modules:/lib/modules
-    ports:
-      - 5000:5000
   faucet:
     restart: always
     image: faucet/faucet:1.10.11

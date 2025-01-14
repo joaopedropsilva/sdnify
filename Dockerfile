@@ -1,9 +1,11 @@
 FROM ubuntu:22.04
 
 USER root
-WORKDIR /root/app
+WORKDIR /root/test
 
-COPY app.ENTRYPOINT.sh /root
+COPY . .
+COPY ENTRYPOINT.sh /root
+COPY .bashrc /root
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -12,19 +14,16 @@ RUN apt-get update \
     iproute2 \
     iptables \
     iputils-ping \
-    mininet \
     net-tools \
     openvswitch-switch \
     openvswitch-testcontroller \
     tcpdump \
     vim \
     python3.10-venv \
-    x11-xserver-utils \
-    xterm \
     && rm -rf /var/lib/apt/lists/* \
-    && chmod +x /root/app.ENTRYPOINT.sh
+    && chmod +x /root/ENTRYPOINT.sh
 
 EXPOSE 6633 6653 6640
 
-ENTRYPOINT ["/root/app.ENTRYPOINT.sh"]
+ENTRYPOINT ["/root/ENTRYPOINT.sh"]
 
