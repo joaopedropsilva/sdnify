@@ -1,11 +1,10 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 PROJECT_ROOT="/root/test"
 
 service openvswitch-switch start
 ovs-vsctl set-manager ptcp:6640
-$PROJECT_ROOT/create_env.sh
-source $PROJECT_ROOT/.venv/bin/activate
+$PROJECT_ROOT/etc/install-deps.sh
 bash
 service openvswitch-switch stop
 

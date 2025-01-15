@@ -5,7 +5,7 @@ WORKDIR /root/test
 
 COPY . .
 COPY ENTRYPOINT.sh /root
-COPY .bashrc /root
+COPY ./etc/bashrc-test-env /root/.bashrc
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \

@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-PROJECT_ROOT=$(dirname "$(realpath "$0")")
+PROJECT_ROOT=$(realpath "$(dirname "$0")")
 
 cd $PROJECT_ROOT/
 python -m src.cli "$@"

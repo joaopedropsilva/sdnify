@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-PROJECT_ROOT=$(dirname "$(realpath "$0")")
+PROJECT_ROOT=$(realpath "$(dirname "$0")")
 
 FAUCET_LOG_DIR="$PROJECT_ROOT/var/log/faucet"
 echo [setup] Creating faucet log files
@@ -16,4 +16,17 @@ LIB_DIR="$PROJECT_ROOT/var/lib"
 echo [setup] Creating lib dirs
 mkdir -p $LIB_DIR/{prometheus,grafana}
 echo [setup] Lib dirs creation finished!
+
+echo [setup] Building test environment docker image
+docker build -t sdnify-test-env .
+echo [setup] Test environment successfully built!
+
+if [ "$1" == "--local" ]; then
+    echo [setup] Installing python dependencies
+    $PROJECT_ROOT/etc/install-deps.sh
+    echo [setup] Dependencies successfully installled!
+
+    echo [setup] Sourcing functions
+    $PROJECT_ROOT/etc/source.sh
+fi
 

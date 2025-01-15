@@ -1,11 +1,6 @@
 ---
 name: sdnify
 services:
-  test-env:
-    build:
-      context: .
-    tty: true
-    privileged: true
   faucet:
     restart: always
     image: faucet/faucet:1.10.11
