@@ -1,6 +1,6 @@
 class Parser:
-    def __init__(self, topo_schema: dict):
-        self._netconfig = topo_schema
+    def __init__(self, netconfig: dict):
+        self._netconfig = netconfig
         self._acls = {
             "allow-all": [
                 {
@@ -16,15 +16,16 @@ class Parser:
         self._meters = {}
         self._vlans = {
             "default_vlan": {
-                "vid": 100
+                "vid": 100,
+                "acls_in": []
             }
         }
 
-    def _create_rate_limit_acls(self) -> None:
-        for config in self._netconfig["rate_limit"]:
-            transport = config["transport"]
+    def _create_rate_limits_acls(self) -> None:
+        for config in self._netconfig["rate_limits"]:
             port = config["port"]
             rate = config["rate"]
+            transport = config["transport"]
 
             rule = {
                 "rule": {
@@ -35,12 +36,12 @@ class Parser:
                     **({"tcp_dst": port} if transport == "tcp" else {}),
                     "actions": {
                         "allow": 1,
-                        "meter": f"qos_meter_{transport}_{port}_{rate}"
+                        "meter": f"qos_meter_{port}_{rate}_{transport}"
                     },
                 }
             }
 
-            self._acls[f"{transport}_{port}_{rate}"] = [rule]
+            self._acls[f"{port}_{rate}_{transport}"] = [rule]
 
     def _map_all_hosts_from(self, datapath: dict) -> dict:
         interfaces = {}
@@ -55,7 +56,7 @@ class Parser:
         return interfaces
 
     def _create_stack_links(self) -> None:
-        for link in self._netconfig["links"]:
+        for link in self._netconfig["stack_links"]:
             (origin, dest) = link
 
             orgin_dp_mapped_ports = \
@@ -104,10 +105,10 @@ class Parser:
             self._dps[dp["name"]] = dp_config
 
     def _create_meters(self) -> None:
-        for index, config in enumerate(self._netconfig["rate_limit"], start=1):
-            transport = config["transport"]
+        for index, config in enumerate(self._netconfig["rate_limits"], start=1):
             port = config["port"]
             rate = config["rate"]
+            transport = config["transport"]
 
             meter_config = {
                 "meter_id": index,
@@ -122,9 +123,7 @@ class Parser:
                 },
             }
 
-
-            self._meters[f"qos_meter_{transport}_{port}_{rate}"] = \
-                    meter_config
+            self._meters[f"qos_meter_{port}_{rate}_{transport}"] = meter_config
 
     def _populate_vlans_acls_in(self) -> None:
         acl_names = list(self._acls.keys())
@@ -133,7 +132,7 @@ class Parser:
         self._vlans["default_vlan"]["acls_in"] = acl_names
 
     def build_config(self) -> dict:
-        self._create_rate_limit_acls()
+        self._create_rate_limits_acls()
         self._create_dps()
         self._create_stack_links()
         self._create_meters()
