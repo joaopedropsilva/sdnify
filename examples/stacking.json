@@ -1,6 +1,6 @@
 {
     "max_bandwidth": 100,
-    "rate_limits": [],
+    "rate_limit": [],
     "links": [
         ["sw1", "sw2"],
         ["sw1", "sw3"],

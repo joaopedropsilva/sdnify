@@ -1,9 +1,5 @@
-from src.policy import Policy, PolicyTypes
-
-
 class Parser:
     def __init__(self, topo_schema: dict):
-        self._policies = []
         self._netconfig = topo_schema
         self._acls = {
             "allow-all": [
@@ -24,56 +20,32 @@ class Parser:
             }
         }
 
-    def _get_protocol_by(self, traffic_type: str) -> dict:
-        if traffic_type == PolicyTypes.VOIP.value:
-            proto_number = 17
-        elif traffic_type != PolicyTypes.VOIP.value \
-                and traffic_type != "all":
-            proto_number = 6
-        else:
-            proto_number = 0
-
-        return {
-            **({"nw_proto": proto_number} \
-                    if proto_number != 0 \
-                    else {})
-        }
-
-    def _get_ports_by(self, traffic_type: str) -> dict:
-        return {
-            **({"udp_dst": 5001} \
-                if traffic_type == PolicyTypes.VOIP.value \
-                else {}),
-            **({"tcp_dst": 80} \
-               if traffic_type == PolicyTypes.HTTP.value \
-               else {}),
-            **({"tcp_dst": 21} \
-               if traffic_type == PolicyTypes.FTP.value \
-               else {}),
-        }
-
     def _create_rate_limit_acls(self) -> None:
-        for policy in self._policies:
+        for config in self._netconfig["rate_limit"]:
+            transport = config["transport"]
+            port = config["port"]
+            rate = config["rate"]
+
             rule = {
                 "rule": {
-                    "dl_type": '0x800',
-                    **self._get_protocol_by(
-                        traffic_type=policy.traffic_type.value),
-                    **self._get_ports_by(
-                        traffic_type=policy.traffic_type.value),
+                    "dl_type": "0x800",
+                    "nw_proto": 17 if transport == "udp" else 6,
+                    "udp_dst": 17 if transport == "udp" else 6,
+                    **({"udp_dst": port} if transport == "udp" else {}),
+                    **({"tcp_dst": port} if transport == "tcp" else {}),
                     "actions": {
                         "allow": 1,
-                        "meter": f"qos_meter_{policy.traffic_type.value}"
+                        "meter": f"qos_meter_{transport}_{port}_{rate}"
                     },
                 }
             }
 
-            self._acls[policy.traffic_type.value] = [rule]
+            self._acls[f"{transport}_{port}_{rate}"] = [rule]
 
     def _map_all_hosts_from(self, datapath: dict) -> dict:
         interfaces = {}
 
-        for index, hostname in enumerate(dp["hosts"], start=1):
+        for index, hostname in enumerate(datapath["hosts"], start=1):
             interfaces[index] = {
                 "description": f"Virtualized {hostname}",
                 "name": hostname,
@@ -132,8 +104,10 @@ class Parser:
             self._dps[dp["name"]] = dp_config
 
     def _create_meters(self) -> None:
-        for index, policy in enumerate(self._policies, start=1):
-            bandwidth = policy.bandwidth * 1000
+        for index, config in enumerate(self._netconfig["rate_limit"], start=1):
+            transport = config["transport"]
+            port = config["port"]
+            rate = config["rate"]
 
             meter_config = {
                 "meter_id": index,
@@ -142,13 +116,14 @@ class Parser:
                     "bands": [
                         {
                             "type": "DROP",
-                            "rate": bandwidth
+                            "rate": rate * 1000
                         }
                     ],
                 },
             }
 
-            self._meters[f"qos_meter_{policy.traffic_type.value}"] = \
+
+            self._meters[f"qos_meter_{transport}_{port}_{rate}"] = \
                     meter_config
 
     def _populate_vlans_acls_in(self) -> None:
