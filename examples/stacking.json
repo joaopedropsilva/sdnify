@@ -1,11 +1,4 @@
 {
-    "max_bandwidth": 100,
-    "rate_limit": [],
-    "links": [
-        ["sw1", "sw2"],
-        ["sw1", "sw3"],
-        ["sw2", "sw3"]
-    ],
     "datapaths": [
         {
             "name": "sw1",
@@ -20,6 +13,12 @@
             "name": "sw3",
             "hosts": ["h3"]
         }
+    ],
+    "rate_limits": [],
+    "stack_links": [
+        ["sw1", "sw2"],
+        ["sw1", "sw3"],
+        ["sw2", "sw3"]
     ]
 }
 

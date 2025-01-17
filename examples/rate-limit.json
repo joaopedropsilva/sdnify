@@ -1,29 +1,27 @@
 {
-    "max_bandwidth": 100,
-    "rate_limit": [
-        {
-            "transport": "tcp",
-            "port": 80,
-            "rate": 30
-        },
-        {
-            "transport": "tcp",
-            "port": 21,
-            "rate": 10
-        },
-        {
-            "transport": "tcp",
-            "port": 5000,
-            "rate": 60
-        }
-    ],
-    "links": [],
-    "stacks": [],
     "datapaths": [
         {
             "name": "sw1",
             "hosts": ["h1", "h2"]
         }
-    ]
+    ],
+    "rate_limit": [
+        {
+            "port": 80,
+            "rate": 30,
+            "transport": "tcp"
+        },
+        {
+            "port": 21,
+            "rate": 10,
+            "transport": "tcp"
+        },
+        {
+            "port": 5001,
+            "rate": 60,
+            "transport": "udp"
+        }
+    ],
+    "stack_links": []
 }
 
