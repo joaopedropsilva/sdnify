@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.context import Context
+from src.parser import Parser
 import json
 import yaml
 
@@ -56,8 +56,8 @@ class FaucetConfig(Config):
         return cls._read_from(path=faucet_path)
 
     @classmethod
-    def update_based_on(cls, context: Context) -> tuple[str, bool]:
-        config = context.build_config()
+    def update_based_on(cls, parser: Parser) -> tuple[str, bool]:
+        config = parser.build_config()
 
         faucet_path = Path(cls._get_project_path(), cls._FAUCET_PATH)
         with open(faucet_path, "w") as file:

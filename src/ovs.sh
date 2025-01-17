@@ -44,8 +44,11 @@ cleanup () {
         if [ -f "/run/dhclient-${NAME}.pid" ]; then
             pkill -F "/run/dhclient-${NAME}.pid"
         fi
+        # Improve cleanup with port information
         if [ -f "/run/iperf3-${NAME}.pid" ]; then
-            pkill -F "/run/iperf3-${NAME}.pid"
+            pkill -F "/run/iperf3-${NAME}-80.pid"
+            pkill -F "/run/iperf3-${NAME}-21.pid"
+            pkill -F "/run/iperf3-${NAME}-5000.pid"
         fi
         if [ -f "/run/bird-${NAME}.pid" ]; then
             pkill -F "/run/bird-${NAME}.pid"
@@ -91,8 +94,8 @@ create_host () {
 }
 
 add_host_to_switch () {
-    SW_NAME=sw$2
     IF_NAME=veth-$1
+    SW_NAME=sw$2
     PORT=$3
 
     ovs-vsctl add-port ${SW_NAME} ${IF_NAME} \

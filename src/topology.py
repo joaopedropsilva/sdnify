@@ -1,18 +1,18 @@
-from json import load, JSONDecodeError
+from json import load
+from pathlib import Path
 
 
-class Topology:
-    def __init__(self, schema: dict):
-        self._schema = schema
-        self._is_valid = False
+class NetConfigValidator:
+    @staticmethod
+    def _read_from(path: str) -> None:
+        if not Path(path).exists():
+            raise FileNotFoundError("netconfig.json not found!")
 
-    @property
-    def schema(self) -> dict:
-        return self._schema
+        with open(Path(path).resolve(), "r") as file:
+            return load(file)
 
-    @property
-    def is_valid(self) -> bool:
-        return self._is_valid
+    def __init__(self, netconfig_path: str):
+        self._netconfig = self._read_from(path=netconfig_path)
 
     def _validate_stacks_from(self, dp: dict) -> tuple[str, bool]:
         try:
@@ -68,7 +68,7 @@ class Topology:
 
         return "", True
 
-    def _validate_dps(self) -> tuple[str, bool]:
+    def _validate_datapaths(self) -> tuple[str, bool]:
         if "dps" not in self._schema:
             return "\"dps\" não encontrado no arquivo de topologia.", False
 
@@ -94,63 +94,8 @@ class Topology:
 
         return ("", True)
 
-    def _validate_vlans(self) -> tuple[str, bool]:
-        if "vlans" not in self._schema:
-            return "\"vlans\" não encontrado no arquivo de topologia.", False
-
-        vlans = self._schema["vlans"]
-
-        if not isinstance(vlans, list):
-            return "\"vlans\" deve ser do tipo \"list\"", False
-
-        for vlan in vlans:
-            if not isinstance(vlan, dict):
-                return "Tipo não permitido para objeto em \"vlans\"", False
-
-            if "name" not in vlan:
-                return "Campo \"name\" ausente em objeto de \"vlans\"", False
-
-            if not isinstance(vlan["name"], str):
-                return "Tipo inválido em \"name\" de objeto em \"vlans\"", False
-
-            if "description" not in vlan:
-                return "Campo \"description\" ausente em objeto de \"vlans\"", False
-
-            if not isinstance(vlan["description"], str):
-                return "Tipo inválido em \"description\" de objeto em \"vlans\"", False
-
-        return "", True
-
-    def validate(self) -> tuple[str, bool]:
-        (err_dps, is_dps_valid) = self._validate_dps()
+    def validate(self) -> None:
+        (err_dps, is_dps_valid) = self._validate_datapaths()
         if not is_dps_valid:
-            return err_dps, False
-
-        (err_vlans, is_vlans_valid) = self._validate_vlans()
-        if not is_vlans_valid:
-            return err_vlans, False
-
-        self._is_valid = True
-
-        return "", True
-
-
-class TopologyFactory:
-    @staticmethod
-    def create_from(config: dict) -> tuple[str, Topology | None]:
-        try:
-            topo_schema_path = config["topo_schema_path"]
-        except KeyError:
-            return "Caminho para arquivo de topologia não encontrado.", None
-
-        topo_schema = dict()
-        try:
-            with open(topo_schema_path, "r") as file:
-                topo_schema = load(file)
-        except FileNotFoundError as err:
-            return str(err), None
-        except JSONDecodeError as err:
-            return str(err), None
-
-        return "", Topology(schema=topo_schema)
+            raise Exception(f"invalid netconfig.json: {err_dps}")
 

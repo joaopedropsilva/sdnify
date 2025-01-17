@@ -12,6 +12,7 @@ RUN apt-get update \
     curl \
     dnsutils \
     iproute2 \
+    iperf3 \
     iptables \
     iputils-ping \
     net-tools \

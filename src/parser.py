@@ -1,14 +1,10 @@
 from src.policy import Policy, PolicyTypes
-from typing import List
-from src.topology import Topology
 
 
-class Context:
-    def __init__(self,
-                 policies: List[Policy],
-                 topo_schema: dict):
-        self._policies = policies
-        self._topo_schema = topo_schema
+class Parser:
+    def __init__(self, topo_schema: dict):
+        self._policies = []
+        self._netconfig = topo_schema
         self._acls = {
             "allow-all": [
                 {
@@ -23,19 +19,10 @@ class Context:
         self._dps = {}
         self._meters = {}
         self._vlans = {
-            "test": {
-                "description": "vlan test",
+            "default_vlan": {
                 "vid": 100
             }
         }
-
-    @property
-    def policies(self) -> List[Policy]:
-        return self._policies
-
-    @policies.setter
-    def policies(self, new_policies: List[Policy]) -> None:
-        self._policies = new_policies
 
     def _get_protocol_by(self, traffic_type: str) -> dict:
         if traffic_type == PolicyTypes.VOIP.value:
@@ -65,7 +52,7 @@ class Context:
                else {}),
         }
 
-    def _create_policies_acls(self) -> None:
+    def _create_rate_limit_acls(self) -> None:
         for policy in self._policies:
             rule = {
                 "rule": {
@@ -83,58 +70,63 @@ class Context:
 
             self._acls[policy.traffic_type.value] = [rule]
 
-    def _map_all_hosts_from(self, dp: dict) -> tuple[dict, int]:
+    def _map_all_hosts_from(self, datapath: dict) -> dict:
         interfaces = {}
 
-        last_port_mapped = 0
-        for host in dp["hosts"]:
-            last_port_mapped += 1
-            interfaces[last_port_mapped] = {
-                "description": f"Virtualized {host['name']}",
-                "name": host["name"],
-                "native_vlan": host["vlan"]
+        for index, hostname in enumerate(dp["hosts"], start=1):
+            interfaces[index] = {
+                "description": f"Virtualized {hostname}",
+                "name": hostname,
+                "native_vlan": "default_vlan"
             }
 
-        return interfaces, last_port_mapped
+        return interfaces
 
-    def _map_all_stacks_from(self, dp: dict, last_port_mapped: int) -> dict:
-        stacks = {}
+    def _create_stack_links(self) -> None:
+        for link in self._netconfig["links"]:
+            (origin, dest) = link
 
-        port = last_port_mapped
-        for stack in dp["stack_definitions"]:
-            port += 1
-            stacks[port] = {
-                "description": stack["description"],
+            orgin_dp_mapped_ports = \
+                    list(map(lambda x: int(x),
+                             self._dps[origin]["interfaces"].keys()))
+
+            dest_dp_mapped_ports = \
+                    list(map(lambda x: int(x),
+                             self._dps[dest]["interfaces"].keys()))
+
+            origin_available_port = max(orgin_dp_mapped_ports) + 1
+            dest_available_port = max(dest_dp_mapped_ports) + 1
+
+            self._dps[origin]["interfaces"][origin_available_port] = {
+                "description": f"{origin} link to {dest}",
                 "stack": {
-                    "dp": stack["dp"],
-                    "port": stack["port"]
+                    "dp": dest,
+                    "port": dest_available_port
                 }
             }
 
-        return stacks
+            self._dps[dest]["interfaces"][dest_available_port] = {
+                "description": f"{dest} link to {origin}",
+                "stack": {
+                    "dp": origin,
+                    "port": origin_available_port
+                }
+            }
 
     def _create_dps(self) -> None:
-        for index, dp in enumerate(self._topo_schema["dps"], start=1):
+        for index, dp in enumerate(self._netconfig["datapaths"], start=1):
             dp_config = {
                 "dp_id": index,
                 "hardware": "Open vSwitch"
             }
 
-            stack_config = {}
-            if "stack_priority" in dp:
-                stack_config = {"priority": dp["stack_priority"]}
-
-            dp_config["stack"] = {
-                **stack_config
+            if "priority" in dp:
+                dp_config["stack"] = {
+                    "priority": dp["priority"]
                 }
 
-            (hosts, last_port_mapped) = self._map_all_hosts_from(dp=dp)
-            stacks = self._map_all_stacks_from(dp=dp,
-                                               last_port_mapped=last_port_mapped)
-
             dp_config["interfaces"] = {
-                **hosts,
-                **stacks
+                **self._map_all_hosts_from(datapath=dp)
             }
 
             self._dps[dp["name"]] = dp_config
@@ -163,11 +155,12 @@ class Context:
         acl_names = list(self._acls.keys())
         acl_names.reverse()
 
-        self._vlans["test"]["acls_in"] = acl_names
+        self._vlans["default_vlan"]["acls_in"] = acl_names
 
     def build_config(self) -> dict:
-        self._create_policies_acls()
+        self._create_rate_limit_acls()
         self._create_dps()
+        self._create_stack_links()
         self._create_meters()
         self._populate_vlans_acls_in()
 
@@ -177,32 +170,4 @@ class Context:
             "meters": self._meters,
             "vlans": self._vlans
         }
-
-
-class ContextFactory:
-    @staticmethod
-    def create_from(context_data: dict) -> tuple[str, Context | None]:
-        try:
-            topology = context_data["topology"]
-        except KeyError:
-            return ("Informação de topologia ausente.", None)
-
-        if not isinstance(topology, Topology):
-            return ("Topologia inválida para criação de arquivo de configuração.",
-                    None)
-
-        if not topology.is_valid:
-            return ("Topologia inválida para criação de arquivo de configuração.",
-                    None)
-
-        try:
-            policies = context_data["policies"]
-        except KeyError:
-            policies = []
-
-        if not isinstance(policies, list):
-            policies = []
-
-        return ("", Context(policies=policies,
-                            topo_schema=topology.schema))
 

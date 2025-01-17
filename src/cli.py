@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 from subprocess import run
+from src.parser import Parser
 
 
 class _Manual:
@@ -91,5 +92,6 @@ class Dispatcher:
 
 
 if __name__ == "__main__":
-    Dispatcher.dispatch()
+    netconfig = 
+    parser = Parser()
 
