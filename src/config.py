@@ -1,3 +1,5 @@
+# LEGACY
+
 from pathlib import Path
 from src.parser import Parser
 import json

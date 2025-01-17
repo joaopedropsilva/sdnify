@@ -1,3 +1,4 @@
+# LEGACY
 from enum import Enum
 
 
