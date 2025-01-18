@@ -34,6 +34,9 @@ class NetConfig:
                             raise TypeError(f"{prop_alias} \"{inner}\" must be a {repr(on_list_type)}")
 
             for (optional, inner_type) in optional_props:
+                if optional not in prop_item:
+                    return
+
                 if not isinstance(prop_item[optional], inner_type):
                     raise TypeError(f"{prop_alias} \"{optional}\" must be a {repr(inner_type)}")
 
@@ -50,7 +53,7 @@ class NetConfig:
                 "name": "datapaths",
                 "alias": "Datapath",
                 "inner_props": [
-                    ("name", int, None),
+                    ("name", str, None),
                     ("hosts", list, str)
                 ],
                 "optional_props": [("priority", int)]
@@ -107,7 +110,7 @@ class NetConfig:
 
     @staticmethod
     def load_json_from(path: str) -> dict:
-        filepath = Path(path, ".json")
+        filepath = Path(path + ".json")
 
         if not filepath.exists():
             raise FileNotFoundError("Config not found!")
