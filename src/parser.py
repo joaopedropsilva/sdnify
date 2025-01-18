@@ -31,7 +31,6 @@ class Parser:
                 "rule": {
                     "dl_type": "0x800",
                     "nw_proto": 17 if transport == "udp" else 6,
-                    "udp_dst": 17 if transport == "udp" else 6,
                     **({"udp_dst": port} if transport == "udp" else {}),
                     **({"tcp_dst": port} if transport == "tcp" else {}),
                     "actions": {
