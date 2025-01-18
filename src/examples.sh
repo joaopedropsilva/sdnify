@@ -1,5 +1,4 @@
-# Rate limit example
-create_rate_limit_example () {
+create_two_hosts_same_switch () {
     cleanup
 
     echo Creating host h1 - 10.0.1.1
@@ -15,30 +14,26 @@ create_rate_limit_example () {
 }
 
 # Change function to generic por on TCP or UDP 
-gen_http_traffic () {
-    as_ns h1 iperf3 --server --port 80 --daemon \
+gen_http_fake_traffic () {
+    exec_on h1 iperf3 --server --port 80 --daemon \
         --pidfile /run/iperf3-h1-80.pid
-    as_ns h2 iperf3 --client 10.0.1.1 --port 80 --bandwidth 100m \
+    exec_on h2 iperf3 --client 10.0.1.1 --port 80 --bandwidth 100m \
         --interval 1 --verbose
 }
 
-gen_ftp_traffic () {
-    as_ns h1 iperf3 --server --port 21 --daemon \
+gen_ftp_fake_traffic () {
+    exec_on h1 iperf3 --server --port 21 --daemon \
         --pidfile /run/iperf3-h1-21.pid
-    as_ns h2 iperf3 --client 10.0.1.1 --port 21 --bandwidth 100m \
+    exec_on h2 iperf3 --client 10.0.1.1 --port 21 --bandwidth 100m \
         --interval 1 --verbose
 }
 
 gen_udp_traffic () {
-    as_ns h1 iperf3 --server --port 5000 --daemon \
+    exec_on h1 iperf3 --server --port 5000 --daemon \
         --pidfile /run/iperf3-h1-5000.pid
-    as_ns h2 iperf3 --client 10.0.1.1 --port 5000 --bandwidth 100m \
+    exec_on h2 iperf3 --client 10.0.1.1 --port 5000 --bandwidth 100m \
         --interval 1 --verbose --udp
 }
-
-add_policies () {
-}
-
 
 # Stacking example
 create_stacking_example () {

@@ -12,11 +12,6 @@ for file in "${files[@]}"; do
 done
 echo [setup] Log files creation finished!
 
-LIB_DIR="$PROJECT_ROOT/var/lib"
-echo [setup] Creating lib dirs
-mkdir -p $LIB_DIR/{prometheus,grafana}
-echo [setup] Lib dirs creation finished!
-
 echo [setup] Building test environment docker image
 docker build -t sdnify-test-env .
 echo [setup] Test environment successfully built!

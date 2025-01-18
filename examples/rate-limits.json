@@ -5,7 +5,7 @@
             "hosts": ["h1", "h2"]
         }
     ],
-    "rate_limit": [
+    "rate_limits": [
         {
             "port": 80,
             "rate": 30,

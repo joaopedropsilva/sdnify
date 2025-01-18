@@ -3,7 +3,6 @@ FROM ubuntu:22.04
 USER root
 WORKDIR /root/test
 
-COPY . .
 COPY ENTRYPOINT.sh /root
 COPY ./etc/bashrc-test-env /root/.bashrc
 
