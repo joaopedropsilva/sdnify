@@ -1,10 +1,13 @@
 from src.parser import Parser
 from src.config import NetConfig, FaucetConfig
+from sys import argv
 
 
 if __name__ == "__main__":
+    FaucetConfig.clear()
 
-    netconfig = NetConfig.load_json_from(path="examples/simple_network")
+    json_path = argv[-1]
+    netconfig = NetConfig.load_json_from(path=json_path)
     NetConfig.validate(netconfig)
 
     parser = Parser(netconfig)

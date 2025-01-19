@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_ROOT=$(realpath "$(dirname "$(dirname "$0")")")
+PROJECT_ROOT=$(dirname "$(realpath "$(dirname "$0")")")
 
 rm -rf "$PROJECT_ROOT/venv"
 python3 -m venv "$PROJECT_ROOT/venv"

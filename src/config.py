@@ -110,7 +110,7 @@ class NetConfig:
 
     @staticmethod
     def load_json_from(path: str) -> dict:
-        filepath = Path(path + ".json")
+        filepath = Path(path)
 
         if not filepath.exists():
             raise FileNotFoundError("Config not found!")
