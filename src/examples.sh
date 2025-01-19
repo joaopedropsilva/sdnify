@@ -13,56 +13,41 @@ create_two_hosts_same_switch () {
     add_host_to_switch h2 1 2
 }
 
-# Change function to generic por on TCP or UDP 
-gen_http_fake_traffic () {
-    exec_on h1 iperf3 --server --port 80 --daemon \
-        --pidfile /run/iperf3-h1-80.pid
-    exec_on h2 iperf3 --client 10.0.1.1 --port 80 --bandwidth 100m \
-        --interval 1 --verbose
+gen_iperf_traffic () {
+    HOST=$1
+    HOST_IP="10.0.1.${HOST: -1}"
+    CLIENT=$2
+    PORT=$3
+
+    TRANSPORT=''
+    if [ "$4" == "udp" ]; then
+        TRANSPORT='-u'
+    fi
+
+    exec_on $HOST iperf3 --server --port $PORT --daemon
+    exec_on $CLIENT iperf3 $TRANSPORT --client $HOST_IP --port $PORT \
+        --bandwidth 100m --interval 1 --verbose
 }
 
-gen_ftp_fake_traffic () {
-    exec_on h1 iperf3 --server --port 21 --daemon \
-        --pidfile /run/iperf3-h1-21.pid
-    exec_on h2 iperf3 --client 10.0.1.1 --port 21 --bandwidth 100m \
-        --interval 1 --verbose
-}
-
-gen_udp_traffic () {
-    exec_on h1 iperf3 --server --port 5000 --daemon \
-        --pidfile /run/iperf3-h1-5000.pid
-    exec_on h2 iperf3 --client 10.0.1.1 --port 5000 --bandwidth 100m \
-        --interval 1 --verbose --udp
-}
-
-# Stacking example
 create_stacking_example () {
     cleanup
 
     echo Criando host h1 - 10.0.1.1
     create_host h1 10.0.1.1
-
     echo Criando host h2 - 10.0.1.2
     create_host h2 10.0.1.2
-
     echo Criando host h3 - 10.0.1.3
     create_host h3 10.0.1.3
-
     echo Criando switch sw1
     create_switch 1
-
     echo Criando switch sw2
     create_switch 2
-
     echo Criando switch sw3
     create_switch 3
-
     echo Adicionando h1 a sw1
     add_host_to_switch h1 1 1
-
     echo Adicionando h2 a sw2
     add_host_to_switch h2 2 1
-
     echo Adicionando h3 a sw3
     add_host_to_switch h3 3 1
 
