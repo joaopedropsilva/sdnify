@@ -2,6 +2,12 @@
 
 PROJECT_ROOT=$(realpath "$(dirname "$0")")
 
+echo [setup] Deleting docker-compose obsolete volumes
+docker compose down
+docker volume rm -f sdnify_grafana-storage
+docker volume rm -f sdnify_prometheus-storage
+echo [setup] Deletion complete!
+
 FAUCET_LOG_DIR="$PROJECT_ROOT/etc/faucet"
 echo [setup] Creating faucet log files
 files=("faucet.log" "faucet_exception.log" "gauge.log" "gauge_exception.log")
