@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_ROOT=$(realpath "$(dirname "$(dirname "$0")")")
+PROJECT_ROOT=$(realpath "$(dirname "$0")")
 
 docker container rm -f sdnify-test-env > /dev/null
 docker run --tty --interactive --privileged --name sdnify-test-env \
