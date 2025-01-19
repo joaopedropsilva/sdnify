@@ -21,7 +21,7 @@ gen_iperf_traffic () {
 
     TRANSPORT=''
     if [ "$4" == "udp" ]; then
-        TRANSPORT='-u'
+        TRANSPORT='--udp'
     fi
 
     exec_on $HOST iperf3 --server --port $PORT --daemon
