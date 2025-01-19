@@ -12,12 +12,3 @@ echo [setup] Building test environment docker image
 docker build -t sdnify-test-env .
 echo [setup] Test environment successfully built!
 
-if [ "$1" == "--local" ]; then
-    echo [setup] Installing python dependencies
-    $PROJECT_ROOT/etc/install-deps.sh
-    echo [setup] Dependencies successfully installled!
-
-    echo [setup] Sourcing functions
-    $PROJECT_ROOT/etc/source.sh
-fi
-
