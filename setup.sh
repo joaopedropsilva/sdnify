@@ -2,11 +2,9 @@
 
 PROJECT_ROOT=$(realpath "$(dirname "$0")")
 
-FAUCET_LOG_DIR="$PROJECT_ROOT/var/log/faucet"
+FAUCET_LOG_DIR="$PROJECT_ROOT/etc/faucet"
 echo [setup] Creating faucet log files
-mkdir -p $FAUCET_LOG_DIR
 files=("faucet.log" "faucet_exception.log" "gauge.log" "gauge_exception.log")
-
 for file in "${files[@]}"; do
     touch "$FAUCET_LOG_DIR/$file"
 done
