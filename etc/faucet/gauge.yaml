@@ -1,17 +1,14 @@
 ---
-# Recommended configuration is Prometheus for all monitoring, with all_dps: true
 faucet_configs:
     - '/etc/faucet/faucet.yaml'
 watchers:
     port_status_poller:
         type: 'port_state'
         all_dps: true
-        # dps: ['sw1', 'sw2']
         db: 'prometheus'
     port_stats_poller:
         type: 'port_stats'
         all_dps: true
-        # dps: ['sw1', 'sw2']
         interval: 10
         db: 'prometheus'
     flow_table_poller:
