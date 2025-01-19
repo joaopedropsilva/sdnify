@@ -41,38 +41,20 @@ cleanup () {
     for NETNS in $(ip netns list | grep "faucet-" | awk '{print $1}'); do
         [ -n "${NETNS}" ] || continue
         NAME=${NETNS#faucet-}
-        if [ -f "/run/dhclient-${NAME}.pid" ]; then
-            pkill -F "/run/dhclient-${NAME}.pid"
-        fi
-        # Improve cleanup with port information
-        if [ -f "/run/iperf3-${NAME}.pid" ]; then
-            pkill -F "/run/iperf3-${NAME}-80.pid"
-            pkill -F "/run/iperf3-${NAME}-21.pid"
-            pkill -F "/run/iperf3-${NAME}-5000.pid"
-        fi
-        if [ -f "/run/bird-${NAME}.pid" ]; then
-            pkill -F "/run/bird-${NAME}.pid"
-        fi
 
         ip link delete veth-${NAME}
         ip netns delete ${NETNS}
     done
+
     for isl in $(ip -o link show | awk -F': ' '{print $2}' | grep -oE "^l-sw[0-9](_[0-9]*)?-sw[0-9](_[0-9]*)?"); do
-
         ip link delete dev $isl 2>/dev/null || true
-    done
-    for DNSMASQ in /run/dnsmasq-vlan*.pid; do
-        [ -e "${DNSMASQ}" ] || continue
-
-        pkill -F "${DNSMASQ}"
     done
 
     ip link delete veth-faucet 2>/dev/null || true
 
-    # Fazer deleção de todas as switches
-    ovs-vsctl --if-exists del-br sw1
-    ovs-vsctl --if-exists del-br sw2
-    ovs-vsctl --if-exists del-br sw3
+    for br in $(ovs-vsctl list-br); do
+        ovs-vsctl --if-exists del-br $br
+    done
 }
 
 create_switch () {
