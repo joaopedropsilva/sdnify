@@ -84,3 +84,19 @@ add_host_to_switch () {
       -- set interface ${IF_NAME} ofport_request=${PORT}
 }
 
+gen_iperf_traffic () {
+    HOST=$1
+    HOST_IP="10.0.1.${HOST: -1}"
+    CLIENT=$2
+    PORT=$3
+
+    TRANSPORT=''
+    if [ "$4" == "udp" ]; then
+        TRANSPORT='--udp'
+    fi
+
+    exec_on $HOST iperf3 --server --port $PORT --daemon
+    exec_on $CLIENT iperf3 $TRANSPORT --client $HOST_IP --port $PORT \
+        --bandwidth 100m --interval 1 --verbose
+}
+
