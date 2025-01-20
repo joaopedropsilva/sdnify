@@ -33,9 +33,14 @@ Para executar um exemplo garanta que você já esteja conectado no container de 
 ```
 sdnify <nome-do-exemplo>
 ```
+
 ### Utilizando um exemplo definido pelo usuário
 
-TBD.
+É também possível executar um exemplo customizado definido pelo usuário. Para isso utilize a mesma interface com as mesmas opções. Por padrão os arquivos `.sh` e `.json` do `<nome-do-exemplo>` passado por parâmetro são procurados pela aplicação nos diretórios raíz e e no subdiretório `examples`, nessa ordem. Caso desejado o usuário pode definir um diretório base para que a aplicação procure pelos arquivos, basta utilizar a opção `--base-dir`, definido abaixo:
+
+```
+sdnify <nome-do-exemplo> --base-dir <caminho-absoluto-do-diretorio-base>
+```
 
 ## 3. Monitoramento e acesso ao dashboard
 
