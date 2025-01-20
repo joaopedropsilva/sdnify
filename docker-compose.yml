@@ -30,7 +30,6 @@ services:
     volumes:
       - prometheus-storage:/prometheus
       - ./etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./etc/prometheus/faucet.rules.yml:/etc/prometheus/faucet.rules.yml
     ports:
       - 9090:9090
     links:
