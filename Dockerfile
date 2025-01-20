@@ -5,6 +5,7 @@ WORKDIR /root/test
 
 COPY ENTRYPOINT.sh /root
 COPY ./etc/bashrc-test-env /root/.bashrc
+COPY ./etc/requirements.txt /root/requirements.txt
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -21,9 +22,12 @@ RUN apt-get update \
     vim \
     python3.10-venv \
     && rm -rf /var/lib/apt/lists/* \
-    && chmod +x /root/ENTRYPOINT.sh
+    && chmod +x /root/ENTRYPOINT.sh \
+    && python3 -m venv /root/venv \
+    && bash -c 'source /root/venv/bin/activate && \
+        python3 -m pip install -r /root/requirements.txt'
 
-EXPOSE 6633 6653 6640
+EXPOSE 6653 6640
 
 ENTRYPOINT ["/root/ENTRYPOINT.sh"]
 
