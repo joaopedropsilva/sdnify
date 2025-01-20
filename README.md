@@ -1,174 +1,48 @@
 # SDNIFY
 
-Gerenciador para redes SDN
+O `sdnify` é uma aplicação que simplifica e automatiza algumas funcionalidades disponibilizadas pelo controlador [Faucet SDN](faucet.nz).
 
-O sdnify é uma aplicação que estende as funcionalidades de um controlador de redes SDN.
+## 1. Funcionalidades
 
-## 1. FUNCIONALIDADES
-
-- Automatização da criação e manutenção de políticas de classificação de pacotes;
-- Provisionamento de redes virtuais para testagem de diferentes cenários de rede;
-- Reconstrução de caminhos e redirecionamento automático de enlaces congestinados;
-- Monitoramento, metrificação e alertas sobre o estado de operação da rede;
+- Automatização da criação e manutenção de políticas de classificação de pacotes para limitação de tráfego;
+- Simplificação no estabelecimento de redundância numa rede, através da feature [`stacking`](https://docs.faucet.nz/en/latest/tutorials/stacking.html);
+- Monitoramento e disponibilizção de um dashboard para avaliar a operação da rede;
 - Interface de comando simplificada.
 
-## 2. CONFIGURANDO O GERENCIADOR
+Para a testagem de cada funcionalidade a aplicação conta com um ambiente de testagem em containers [`docker`](https://docs.docker.com/get-started/), onde é possível instanciar uma rede virtual utilizando switches [Open vSwich (OVS)](https://www.openvswitch.org/).
 
-Um arquivo de configuração padrão está disponível no formato JSON, definida na raíz do projeto: `config.example.json`. Caso seja necessário o usuário pode criar seu próprio `config.json` (o nome deve ser exatamente este) desde que contenha as mesmas propriedades padrão definidas abaixo.
+## 2. Testando as funcionalidades
 
-Propriedades padrão:
+### Inicializando o ambiente de teste
 
-- `topo_schema_path`: o caminho do arquivo de topologia da rede virtual a ser instanciada;
-- `max_bandwidth`: o limite máximo de banda permitido nos enlaces da rede virtual.
+Para testar cada funcionalidade é necessário inicializar o ambiente `docker` através da execução dos seguintes scripts na raíz do projeto:
+1. `setup.sh` para fazer as instalações necessárias e criar a imagem do container de testes (É necessário conexão com a Internet para a instalação dos pacotes que vão ser utilizados no container);
+2. `run-test-env.sh` para executar o container de testes.
 
-## 3. INTERFACE DE COMANDOS
+> Esse projeto foi prototipado para ser executado em ambientes `Linux` e depende da instalação de dependências como: [Docker Engine](https://docs.docker.com/engine/), [Docker Compose](https://docs.docker.com/compose/) e [Python 3.10](https://www.python.org/downloads/release/python-31016/).
 
-Uma interface de linha de comando está disponível para disparar as ações implementadas, para utilizá-la é necessário invocar o script `cli.sh` na raíz do projeto. Para detalhes sobre como utilizar cada comando e quais argumentos devem estar presentes execute o script com o parâmetro `--help`.
+### Utilizando arquivos exemplos prontos
 
-Uso da interface:
+O diretório `examples` conta com diversos arquivos `.sh` e `.json`, que definem exemplos prontos para serem executados para cada funcionalidade da aplicação. Cada exemplo é definido por um nome, ou seja:
+- `simple-network` (instanciação de uma rede com dois hosts e uma switch e execução de interação entre os hosts);
+- `rate-limits` (imposição de limitações na banda para tráfegos simulados);
+- `stacking` (aplicação de uma rede com três switches interligadas e configurações de redundância).
 
-`./cli.sh [args]`
+Para executar um exemplo garanta que você já esteja conectado no container de testes. Em seguida utilize a interface de linha de comando `sdnify` seguida do nome do exemplo desejado.
 
-Obtendo ajuda para uso da interface:
-
-`./cli.sh --help`
-
-OBS.: `cli.sh` não é suportado em ambientes windows, para utilizar a interface ative o ambiente virtual e, dentro do diretório raíz do projeto, execute: `python -m src.cli [args]`.
-
-Ações disponíveis pelo gerenciador:
-
-- `virtnet_create`: criar uma rede virtual;
-- `virtnet_destroy`: destruir uma rede virtual instanciada;
-- `virtnet_status`: exibir o status de operação da rede virtual instanciada;
-- `create_policy`: criar uma política de classificação de pacotes;
-- `remove_policy`: remover uma política de classificação de pacotes;
-- `manual`: acesso ao presente manual de operação; 
-- `test`: executar algum arquivo de testes.
-
-## 4. INSTANCIANDO REDES VIRTUAIS
-
-Para trabalhar com redes virtuais é necessário definir a topologia da rede desejada em um arquivo no formato JSON com exatamente a seguinte estrutura (no processo de instanciação essa estrutura é validada e caso esteja incorreta a rede não será instanciada):
-
-```json
-{
-    "dps": [DP_OBJECT", ...],
-    "vlans": [VLAN_OBJECT, ...]
-}
 ```
-
-Propriedades de um `DP_OBJECT`:
-
-- `name`: nome da switch;
-- `hosts`: lista de `HOST_OBJECT`.
-- `stack_definitions`: lista de `STACK_OBJECT`.
-
-Propriedades de um `HOST_OBJECT`:
-
-- `name`: nome do host;
-- `vlan`: nome da vlan que agrega esse host.
-
-Propriedades de um `STACK_OBJECT`:
-
-- `description`: descrição da stack;
-- `dp`: nome da interface (switch) remota;
-- `port`: porta de acesso para a stack da switch remota.
-
-Propriedades de um `VLAN_OBJECT`:
-
-- `name`: nome da vlan;
-- `description`: descrição da vlan.
-
-O arquivo de topologia definido deve ter seu caminho especificado no arquivo de configuração do controlador, na propriedade `topo_schema_path`.
-
-Exemplo de topologia: 
-
-```json
-{
-    "dps": [
-        {
-            "name": "sw1",
-            "hosts": [
-                {
-                    "name": "h1",
-                    "vlan": "test"
-                },
-                {
-                    "name": "h2",
-                    "vlan": "test"
-                }
-            ],
-            "stack_definitions": []
-        },
-    ],
-    "vlans": [
-        {
-            "name": "test",
-            "description": "test vlan"
-        }
-    ]
-}
+sdnify <nome-do-exemplo>
 ```
+### Utilizando um exemplo definido pelo usuário
 
-Uma API com os seguintes endpoints estão disponíveis para controle da rede virtual:
+TBD.
 
-- `/virtnet/start`
-    Instancia uma rede virtual pré definida no arquivo especificado por topo_schema_path configuração do gerenciador.
-
-    Métodos HTTP permitidos: `POST`
-    Payload da requisição: Não é necessário payload.
-
-- `/virtnet/destroy`
-    Suspende a operação de uma rede virtual instanciada e desaloca os recursos utilizados.
-
-    Métodos HTTP permitidos: `POST`
-    Payload da requisição: Não é necessário payload.
-
-- `/virtnet/status`
-    Obtém o status de operação de uma rede virtual instanciada.
-
-    Métodos HTTP permitidos: `GET`
-    Payload da requisição: Não é necessário payload.
-
-## 5. POLÍTICAS DE CLASSIFICAÇÃO DE PACOTES
-
-A criação e remoção de políticas de classificação de pacotes está disponível através da interface de linha de comando (idem ao item 3) e através de do endpoint `/manager/manage_policy`.
-
-1. Criando uma nova política:
-
-Método HTTP: `POST`
-Payload da requisição:
-
-```json
-{
-    "data": {
-        "traffic_type": TRAFFIC_TYPE,
-        "bandwidth": BANDWIDTH
-    }
-}
-```
-
-2. Removendo uma política já criada:
-
-Método HTTP: `DELETE`
-Payload da requisição:
-
-```json
-{
-    "data": {
-        "traffic_type": TRAFFIC_TYPE
-    }
-}
-```
-
-- `TRAFFIC_TYPE`: é o tipo de tráfego que a política irá agir sobre. Estão disponíveis os seguintes tipos: `http`, `ftp` e `voip`.
-- `BANDWIDTH`: um inteiro maior que 1 e menor que o valor limite definido no arquivo de configuração do gerenciador pela propriedade `max_bandwidth` (idem ao item 2) representa a largura de banda limite que a política vai estabelecer para aquele tipo de tráfego.
-
-## 6. MONITORAMENTO
+## 3. Monitoramento e acesso ao dashboard
 
 A coleta e agregação de métricas e disponibilização de alertas é realizada pelo [Prometheus](https://prometheus.io/). A visualização dos dados coletados pode ser feita através de dashboards personalizáveis utilizando o [Grafana](https://grafana.com/). Ambos os serviços disponibilizam interfaces para o usuário.
 
 Acesso às interfaces:
 
-- Prometheus: `http://<host-do-gerenciador>:9090/`
-- Grafana: `http://<host-do-gerenciador>:3000/`
+- Prometheus: `http://localhost:9090/`
+- Grafana: `http://localhost:3000/`
 
