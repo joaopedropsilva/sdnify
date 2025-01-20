@@ -13,6 +13,6 @@ run () {
     add_host_to_switch h2 1 2
 
     echo H1 PINGING H2
-    exec_on h1 ping -w 15 10.0.1.2
+    exec_on h1 ping -c 20 -i 1 10.0.1.2
 }
 

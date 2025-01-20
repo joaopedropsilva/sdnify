@@ -25,17 +25,14 @@ run () {
     inter_switch_link sw1:3 sw3:2
     inter_switch_link sw2:3 sw3:3
 
-    echo WAITING FOR FAUCET CONFIG UPDATE
-    sleep 3
-
     echo H1 PINGING H3
-    exec_on h1 ping -w 15 10.0.1.3
+    exec_on h1 ping -c 20 -i 1 10.0.1.3
 
     echo DEACTIVATING SW1:SW3 LINK
     ip link set down l-sw1_3-sw3_2
     ip link set down l-sw3_2-sw1_3
 
     echo H1 PINGING H3
-    exec_on h1 ping -w 15 10.0.1.3
+    exec_on h1 ping -c 30 -i 1 10.0.1.3
 }
 
