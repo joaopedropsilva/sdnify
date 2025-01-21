@@ -1,22 +1,6 @@
 ---
 name: sdnify
 services:
-  app:
-    build:
-      context: .
-      dockerfile: app.Dockerfile
-    tty: true
-    privileged: true
-    environment:
-     - DISPLAY
-    volumes:
-     - ./.bashrc:/root/.bashrc
-     - ./.Xresources:/root/.Xresources
-     - ./:/root/app/
-     - /tmp/.X11-unix:/tmp/.X11-unix
-     - /lib/modules:/lib/modules
-    ports:
-      - 5000:5000
   faucet:
     restart: always
     image: faucet/faucet:1.10.11
@@ -25,7 +9,7 @@ services:
      - FAUCET_CONFIG_STAT_RELOAD=1
     volumes:
       - ./etc/faucet/:/etc/faucet/
-      - ./var/log/faucet/:/var/log/faucet/
+      - ./etc/faucet/:/var/log/faucet/
     ports:
       - 6653:6653
       - 9302
@@ -36,21 +20,16 @@ services:
      - GAUGE_CONFIG_STAT_RELOAD=1
     volumes:
       - ./etc/faucet/:/etc/faucet/
-      - ./var/log/faucet/:/var/log/faucet/
+      - ./etc/faucet/:/var/log/faucet/
     ports:
       - 6654:6653
       - 9303
   prometheus:
     image: prom/prometheus:v2.55.0
     restart: always
-    privileged: true
-    user: "1000:1000"
     volumes:
-      - ./etc/faucet/:/etc/faucet/
-      - ./var/log/faucet/:/var/log/faucet/
-      - ./var/lib/prometheus:/prometheus
+      - prometheus-storage:/prometheus
       - ./etc/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./etc/prometheus/faucet.rules.yml:/etc/prometheus/faucet.rules.yml
     ports:
       - 9090:9090
     links:
@@ -59,11 +38,12 @@ services:
   grafana:
     image: grafana/grafana:11.2.2
     restart: always
-    privileged: true
-    user: '0'
     volumes:
-      - ./var/lib/grafana:/var/lib/grafana
+      - grafana-storage:/var/lib/grafana
     ports:
       - 3000:3000
     links:
       - prometheus
+volumes:
+  grafana-storage:
+  prometheus-storage:

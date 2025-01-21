@@ -1,0 +1,11 @@
+{
+    "datapaths": [
+        {
+            "name": "sw1",
+            "hosts": ["h1", "h2"]
+        }
+    ],
+    "rate_limits": [],
+    "stack_links": []
+}
+

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+source /root/venv/bin/activate
+alias sdnify=/root/test/src/sdnify.sh
+

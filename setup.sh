@@ -1,17 +1,14 @@
 #!/usr/bin/bash
 
-PROJECT_ROOT=$(dirname "$(realpath "$0")")
-FAUCET_LOG_DIR="$PROJECT_ROOT/var/log/faucet"
+PROJECT_ROOT=$(realpath "$(dirname "$0")")
 
-echo [setup] Criando diretórios de logs do faucet
+echo [setup] Deleting docker-compose obsolete volumes
+docker compose down
+docker volume rm -f sdnify_grafana-storage
+docker volume rm -f sdnify_prometheus-storage
+echo [setup] Deletion complete!
 
-mkdir -p $FAUCET_LOG_DIR
-
-files=("faucet.log" "faucet_exception.log" "gauge.log" "gauge_exception.log")
-
-for file in "${files[@]}"; do
-    touch "$FAUCET_LOG_DIR/$file"
-done
-
-echo [setup] Criação finalizada com sucesso!
+echo [setup] Building test environment docker image
+docker build -t sdnify-test-env .
+echo [setup] Test environment successfully built!
 
